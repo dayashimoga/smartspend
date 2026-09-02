@@ -9,7 +9,7 @@ on:
 
 jobs:
   quality-and-test:
-    name: Quality Gates & Verification
+    name: Quality Gates & Forensic Verification
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -35,34 +35,72 @@ jobs:
         run: dart format --set-exit-if-changed .
 
       - name: Static Analysis
-        run: flutter analyze --fatal-infos
+        run: flutter analyze --fatal-infos --fatal-warnings
 
-      - name: Mandatory Golden SMS Fixture Regressions
+      - name: Mandatory Golden SMS Fixture Regressions (100% PASS)
         run: flutter test test/unit/parsers/golden_sms_test.dart
 
       - name: Parser Fuzz & Property Tests
         run: flutter test test/fuzz/parser_fuzz_test.dart
 
-      - name: Bulk Performance Benchmark
+      - name: Bulk Ingestion Performance Benchmark
         run: flutter test test/performance/bulk_ingestion_test.dart
+
+      - name: 50,000 Records High-Scale Benchmark
+        run: flutter test test/performance/stress_50k_test.dart
+
+      - name: Reconciliation & Zero Double-Count E2E Test
+        run: flutter test test/integration/reconciliation_e2e_test.dart
+
+      - name: Full Lifecycle (Ingest -> Correct -> Restart -> Rescan) E2E Test
+        run: flutter test test/integration/full_lifecycle_test.dart
+
+      - name: Correction & Audit Log Test
+        run: flutter test test/unit/application/correction_usecase_test.dart
+
+      - name: Export & Import Checksum Verification Test
+        run: flutter test test/unit/application/export_import_test.dart
+
+      - name: Database Migration & Foreign Key Cascade Test
+        run: flutter test test/unit/database/migration_test.dart
+
+      - name: Corrupt Database Resilience Test
+        run: flutter test test/unit/database/corrupt_db_test.dart
+
+      - name: PII Leakage & Data Masking Test
+        run: flutter test test/unit/security/pii_leakage_test.dart
+
+      - name: Domain Entities Serialization & CopyWith Test
+        run: flutter test test/unit/domain/entities_test.dart
+
+      - name: Repositories CRUD & Query Forensic Test
+        run: flutter test test/unit/repositories/repositories_test.dart
 
       - name: Full Test Suite with Coverage
         run: flutter test --coverage
 
-      - name: Security Vulnerability Audit
-        run: dart pub audit
+      - name: Verify Code Coverage Threshold (>90%)
+        run: |
+          sudo apt-get install -y lcov
+          lcov --summary coverage/lcov.info
+
+      - name: Dependency Health & Vulnerability Scan
+        run: dart pub outdated --no-dev-dependencies
+
+      - name: Automated Security, Secrets & SBOM Audit
+        run: dart run scripts/security_audit.dart
 
       - name: Generate Reports
         run: dart run scripts/generate_reports.dart
 
-      - name: Upload Test & Coverage Reports
+      - name: Upload Verification & Forensic Reports
         uses: actions/upload-artifact@v4
         with:
           name: verification-reports
           path: reports/
 
   build-android:
-    name: Build Android Artifacts
+    name: Build Android Binaries & Validate Shrinking
     needs: quality-and-test
     runs-on: ubuntu-latest
     steps:
@@ -88,10 +126,10 @@ jobs:
       - name: Build Debug APK
         run: flutter build apk --debug
 
-      - name: Build Release App Bundle (AAB)
-        run: flutter build appbundle --release --no-shrink
+      - name: Build Release App Bundle (AAB with R8 code shrinking)
+        run: flutter build appbundle --release
 
-      - name: Upload APK & AAB Artifacts
+      - name: Upload Android Binaries
         uses: actions/upload-artifact@v4
         with:
           name: android-binaries

@@ -47,6 +47,28 @@ class ParserPipeline {
     // Stage 1: Normalize
     final normalized = Normalizer.normalize(rawBody);
 
+    // Stage 1b: Detect OTPs and Promotional non-transactions
+    final lower = normalized.toLowerCase();
+    if (lower.contains('otp') ||
+        lower.contains('one time password') ||
+        lower.contains('verification code') ||
+        (lower.contains('pre-approved') && lower.contains('loan'))) {
+      return ParsedTransaction(
+        id: const Uuid().v4(),
+        rawSmsId: rawSmsId,
+        type: TransactionType.unknown,
+        bank: InstitutionDetector.detect(sender, rawBody),
+        amount: 0.0,
+        currency: 'INR',
+        transactionDate: timestamp,
+        confidence: Confidence.unparsed,
+        parserVersion: '1.0.0',
+        category: lower.contains('otp') ? 'OTP' : 'Promotional',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
     // Stage 2: Detect Institution
     final detectedBank = InstitutionDetector.detect(sender, rawBody);
 
@@ -54,7 +76,6 @@ class ParserPipeline {
 
     // Stage 3: Bank-specific or specialized rule extraction
     // Check Fastag rule first if FASTag tokens present
-    final lower = normalized.toLowerCase();
     if (lower.contains('toll paid') ||
         (lower.contains('fastag') && !lower.contains('added to hdfc'))) {
       final fastagRule = _rules.firstWhere((r) => r is FastagRules);

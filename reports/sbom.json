@@ -1,0 +1,455 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-02T17:07:11.278086",
+    "component": {
+      "name": "SmartSpend",
+      "version": "1.0.0+1",
+      "type": "application"
+    }
+  },
+  "components": [
+    {
+      "name": "args",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "async",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "boolean_selector",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "characters",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "clock",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "code_assets",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "collection",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "crypto",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "cupertino_icons",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "equatable",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "fake_async",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "ffi",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "file",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "fixnum",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "fl_chart",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_lints",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_plugin_android_lifecycle",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_riverpod",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_secure_storage",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_secure_storage_linux",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_secure_storage_macos",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_secure_storage_platform_interface",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_secure_storage_web",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_secure_storage_windows",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_test",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "flutter_web_plugins",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "glob",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "go_router",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "hooks",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "intl",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "jni",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "jni_flutter",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "jni_util",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "js",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "leak_tracker",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "leak_tracker_flutter_testing",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "leak_tracker_testing",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "lints",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "local_auth",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "local_auth_android",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "local_auth_darwin",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "local_auth_platform_interface",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "local_auth_windows",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "logging",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "matcher",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "material_color_utilities",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "meta",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "native_toolchain_c",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "objective_c",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "package_config",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "path",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "path_provider",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "path_provider_android",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "path_provider_foundation",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "path_provider_linux",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "path_provider_platform_interface",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "path_provider_windows",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "platform",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "plugin_platform_interface",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "pub_semver",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "record_use",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "riverpod",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sky_engine",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "source_span",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sqflite",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sqflite_android",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sqflite_common",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sqflite_common_ffi",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sqflite_darwin",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sqflite_platform_interface",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "sqlite3",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "stack_trace",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "state_notifier",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "stream_channel",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "string_scanner",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "synchronized",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "term_glyph",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "test_api",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "typed_data",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "uuid",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "vector_math",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "vm_service",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "web",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "win32",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "xdg_directories",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "yaml",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    },
+    {
+      "name": "dart",
+      "type": "library",
+      "ecosystem": "pub.dev"
+    }
+  ]
+}

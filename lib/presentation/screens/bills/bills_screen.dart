@@ -69,7 +69,7 @@ class BillsScreen extends ConsumerWidget {
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: AppColors.info.withOpacity(0.12),
+                                  color: AppColors.info.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Icon(Icons.receipt_long,
@@ -103,7 +103,7 @@ class BillsScreen extends ConsumerWidget {
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: _getStatusColor(bill.status)
-                                  .withOpacity(0.15),
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

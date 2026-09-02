@@ -51,7 +51,7 @@ class TransactionTile extends StatelessWidget {
                   color: (isIncome
                           ? AppColors.income
                           : (isExpense ? AppColors.expense : AppColors.primary))
-                      .withOpacity(0.12),
+                      .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -119,7 +119,7 @@ class TransactionTile extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.15),
+                              color: AppColors.warning.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(

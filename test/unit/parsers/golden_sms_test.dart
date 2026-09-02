@@ -7,33 +7,30 @@ import 'package:smartspend/domain/enums/bank.dart';
 import 'package:smartspend/domain/enums/confidence.dart';
 
 void main() {
-  late ParserPipeline pipeline;
-  late List<dynamic> goldenFixtures;
+  final pipeline = ParserPipeline();
+  final file = File('test/fixtures/golden_sms.json');
+  final jsonString = file.readAsStringSync();
+  final goldenFixtures = jsonDecode(jsonString) as List<dynamic>;
 
-  setUpAll(() {
-    pipeline = ParserPipeline();
-    final file = File('test/fixtures/golden_sms.json');
-    final jsonString = file.readAsStringSync();
-    goldenFixtures = jsonDecode(jsonString) as List<dynamic>;
-  });
+  group('Mandatory Golden SMS Forensic Regressions', () {
+    for (final fixture in goldenFixtures) {
+      final id = fixture['id'] as String;
+      final rawSms = fixture['raw_sms'] as String;
+      final sender = fixture['sender'] as String;
+      final timestamp = DateTime.parse(fixture['timestamp'] as String);
+      final expected = fixture['expected'] as Map<String, dynamic>;
 
-  group('Mandatory Golden SMS Regressions', () {
-    test('100% Golden SMS Fixtures Parse Accurately', () {
-      expect(goldenFixtures.isNotEmpty, isTrue);
-
-      for (final fixture in goldenFixtures) {
-        final id = fixture['id'] as String;
-        final rawSms = fixture['raw_sms'] as String;
-        final sender = fixture['sender'] as String;
-        final timestamp = DateTime.parse(fixture['timestamp'] as String);
-        final expected = fixture['expected'] as Map<String, dynamic>;
-
+      test('Fixture $id correctly extracted', () {
         final result = pipeline.parseSms(
           rawSmsId: id,
           sender: sender,
           rawBody: rawSms,
           timestamp: timestamp,
         );
+
+        // Parser Version Stamped (Domain A3)
+        expect(result.parserVersion, isNotEmpty);
+        expect(result.parserVersion, equals('1.0.0'));
 
         // 1. Validate Type
         if (expected.containsKey('type')) {
@@ -157,10 +154,15 @@ void main() {
 
         // 12. Validate Confidence
         if (expected.containsKey('confidence')) {
-          expect(result.confidence, equals(Confidence.high),
+          final expConfStr = expected['confidence'] as String;
+          final expConf = Confidence.values.firstWhere(
+            (c) => c.name.toLowerCase() == expConfStr.toLowerCase(),
+            orElse: () => Confidence.high,
+          );
+          expect(result.confidence, equals(expConf),
               reason: 'Fixture $id confidence');
         }
-      }
-    });
+      });
+    }
   });
 }

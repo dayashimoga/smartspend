@@ -237,7 +237,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppColors.primary.withOpacity(0.2)
+                                    ? AppColors.primary.withValues(alpha: 0.2)
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(8),
                               ),

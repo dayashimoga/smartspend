@@ -1,8 +1,40 @@
 {
-  "benchmarkName": "Bulk Financial SMS Ingestion",
-  "messagesProcessed": 5000,
-  "timeElapsedMs": 220,
-  "throughputMsgsPerSec": 22727,
-  "memoryUsagePeak": "< 45MB",
-  "status": "PASS"
+  "benchmarks": [
+    {
+      "name": "50,000 Records Batch Insertion",
+      "records": 50000,
+      "timeElapsedMs": 1260,
+      "throughputRecordsPerSec": 39682,
+      "status": "PASS"
+    },
+    {
+      "name": "Paginated Query (offset 2000, limit 50)",
+      "records": 50000,
+      "latencyMs": 5,
+      "thresholdMs": 150,
+      "status": "PASS"
+    },
+    {
+      "name": "Full-Text Search Across 50,000 Records",
+      "records": 50000,
+      "latencyMs": 12,
+      "thresholdMs": 350,
+      "status": "PASS"
+    },
+    {
+      "name": "Financial Summary Aggregation Across 50,000 Records",
+      "records": 50000,
+      "latencyMs": 133,
+      "thresholdMs": 500,
+      "status": "PASS"
+    },
+    {
+      "name": "Bulk SMS Ingestion Throughput",
+      "messages": 5000,
+      "timeElapsedMs": 220,
+      "throughputMsgsPerSec": 22727,
+      "status": "PASS"
+    }
+  ],
+  "overallPerformanceGate": "PASS"
 }

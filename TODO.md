@@ -24,3 +24,27 @@
 - [X] [2026-09-02T21:04:30Z] Verify all unit tests pass with zero failures
 - [X] [2026-09-02T21:05:00Z] Construct CI/CD pipeline (.github/workflows/ci.yml), Makefile, Containerfile, and report generator (scripts/generate_reports.dart)
 - [X] [2026-09-02T21:08:00Z] Generate complete 18-file documentation suite and HTML/JSON verification reports
+
+### Phase 2: Forensic Production-Certification & Hardening Pass
+- [X] [2026-09-02T22:23:30Z] Fix DatabaseHelper singleton test isolation by providing per-instance database references and escaping PRAGMA key (lib/core/database/database_helper.dart)
+- [X] [2026-09-02T22:24:00Z] Integrate Reconciler.reconcileSingle into IngestSmsUseCase execution loop to guarantee real-time refund-matching and card payment debit reclassification
+- [X] [2026-09-02T22:24:30Z] Fix Android MainActivity.kt onRequestPermissionsResult callback and enforce WindowManager.LayoutParams.FLAG_SECURE
+- [X] [2026-09-02T22:24:40Z] Harden AndroidManifest.xml with android:allowBackup="false" and android:fullBackupContent="false"
+- [X] [2026-09-02T22:25:00Z] Implement SHA-256 validated and sanitized importFromJson in ExportBackupUseCase
+- [X] [2026-09-02T22:26:10Z] Add edge cases (OTP, promotional loans, whitespace variations) to golden fixtures and filter in ParserPipeline
+- [X] [2026-09-02T22:26:20Z] Refactor golden_sms_test.dart to execute individual tests per fixture for forensic traceability (19/19 passing)
+- [X] [2026-09-02T22:27:10Z] Add CorrectionUseCase unit test suite covering field edits, non-financial exclusion, merging, splitting, and audit logging
+- [X] [2026-09-02T22:28:10Z] Add ExportBackupUseCase test suite verifying export, restore, tampered checksum rejection, and malicious input sanitization
+- [X] [2026-09-02T22:28:30Z] Add Reconciliation & Zero Double-Count E2E integration test proving net expense accuracy during real-time ingestion
+- [X] [2026-09-02T22:29:40Z] Add Full Lifecycle E2E test proving fresh-install -> ingest -> manual correction -> DB restart -> rescan zero dupes & non-destructive correction
+- [X] [2026-09-02T22:30:10Z] Add Database migration & foreign key cascading deletion test suite
+- [X] [2026-09-02T22:31:30Z] Add Corrupt database resilience test suite verifying graceful DatabaseException without process crashing
+- [X] [2026-09-02T22:31:50Z] Add PII leakage & data masking test suite verifying only masked last 4 digits are exposed and full PANs are absent
+- [X] [2026-09-02T22:32:10Z] Add 50,000 records high-scale performance benchmark (pagination <10ms, search <20ms, aggregation <200ms)
+- [X] [2026-09-02T22:35:00Z] Replace all deprecated withOpacity calls with withValues and fix flow control curly braces across entire codebase
+- [X] [2026-09-02T22:36:15Z] Verify flutter analyze runs with 0 errors, 0 warnings, 0 infos
+- [X] [2026-09-02T22:37:10Z] Implement automated security audit script (scripts/security_audit.dart) scanning secrets and generating CycloneDX SBOM (reports/sbom.json)
+- [X] [2026-09-02T22:44:00Z] Implement comprehensive UI screen interaction test in test/widget_test.dart
+- [X] [2026-09-02T22:47:40Z] Verify all 63 test suites pass with 100% success rate in container
+- [X] [2026-09-02T22:48:15Z] Update CI/CD workflow (.github/workflows/ci.yml) with all 11 forensic quality gates, security scans, coverage, and release AAB build
+- [X] [2026-09-02T22:48:30Z] Generate updated forensic reports in reports/ (acceptance, parser regression, performance, security audit, SBOM)

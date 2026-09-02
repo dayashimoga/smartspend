@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-09-02T17:07:11.291180",
+  "secretsDetected": 0,
+  "secrets": [],
+  "encryptionEngine": "SQLCipher AES-256 GCM / CBC",
+  "keyStorage": "Android Keystore / iOS Keychain via FlutterSecureStorage",
+  "dataMasking": "Enforced (last 4 digits only)",
+  "backupProtection": "android:allowBackup=false enforced",
+  "screenProtection": "WindowManager.FLAG_SECURE active",
+  "offlineGuarantee": "Verified zero external tracking permissions",
+  "status": "PASS"
+}

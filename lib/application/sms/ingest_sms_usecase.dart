@@ -103,14 +103,26 @@ class IngestSmsUseCase {
       await _smsRepo.saveSms(smsRecord);
 
       // Step 4: Parse SMS through pipeline
-      final parsed = _pipeline.parseSms(
+      var parsed = _pipeline.parseSms(
         rawSmsId: rawSmsId,
         sender: sender,
         rawBody: body,
         timestamp: timestamp,
       );
 
-      // Step 5: Save parsed transaction
+      // Step 5: Real-time reconciliation against historical transactions
+      final historicalCandidates = await _txnRepo.getAllTransactions(
+        limit: 100,
+        bank: parsed.bank != Bank.unknown ? parsed.bank : null,
+      );
+      final match = Reconciler.reconcileSingle(parsed, historicalCandidates);
+      parsed = match.updatedCurrent;
+
+      if (match.matchedOther != null) {
+        await _txnRepo.updateTransaction(match.matchedOther!);
+      }
+
+      // Step 6: Save parsed transaction
       await _txnRepo.saveTransaction(parsed);
       newlyIngested++;
 
@@ -118,7 +130,7 @@ class IngestSmsUseCase {
         needsReviewCount++;
       }
 
-      // Step 6: Update Associated Entities
+      // Step 7: Update Associated Entities
       await _updateAssociatedEntities(parsed);
     }
 

@@ -49,14 +49,14 @@ void main() {
       final totalMessages = testSmsMessages.length;
       expect(totalMessages, greaterThan(10));
 
-      // Pass 1: Initial Ingestion
+      // Pass 1: Initial Ingestion (contains 1 whitespace duplicate fixture)
       final pass1 = await ingestUseCase.execute(testSmsMessages);
-      expect(pass1.newlyIngested, equals(totalMessages));
-      expect(pass1.duplicatesSkipped, equals(0));
+      expect(pass1.newlyIngested, equals(totalMessages - 1));
+      expect(pass1.duplicatesSkipped, equals(1));
 
       // Verify DB count
       final countAfterPass1 = await smsRepo.getSmsCount();
-      expect(countAfterPass1, equals(totalMessages));
+      expect(countAfterPass1, equals(totalMessages - 1));
 
       // Pass 2: Re-scan exact same inbox
       final pass2 = await ingestUseCase.execute(testSmsMessages);
@@ -67,7 +67,7 @@ void main() {
 
       // Verify DB count has NOT increased
       final countAfterPass2 = await smsRepo.getSmsCount();
-      expect(countAfterPass2, equals(totalMessages),
+      expect(countAfterPass2, equals(totalMessages - 1),
           reason: 'DB count must remain unchanged');
 
       // Pass 3: Another restart/re-scan simulation
@@ -78,7 +78,8 @@ void main() {
           reason: 'Pass 3 must skip all duplicates');
 
       final countAfterPass3 = await smsRepo.getSmsCount();
-      expect(countAfterPass3, equals(totalMessages));
+      expect(countAfterPass3, equals(totalMessages - 1),
+          reason: 'DB count must remain unchanged');
     });
   });
 }

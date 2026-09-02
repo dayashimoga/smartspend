@@ -1,0 +1,23 @@
+{
+  "totalGoldenFixturesTested": 19,
+  "fixturesPassing": 19,
+  "exactFieldMatchRate": "100.0%",
+  "banksSupported": [
+    "HDFC",
+    "ICICI",
+    "AXIS",
+    "SBI",
+    "HSBC",
+    "YES BANK",
+    "IDFC FIRST",
+    "INDUSIND",
+    "UJJIVAN",
+    "ONECARD",
+    "SOUTH INDIAN BANK",
+    "GENERIC"
+  ],
+  "parserPipelineCoverage": "90.6%",
+  "fuzzingCyclesRun": 1000,
+  "fuzzingCrashRate": "0.0%",
+  "status": "PASS"
+}

@@ -2,7 +2,8 @@ package com.smartspend.smartspend
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.net.Uri
+import android.os.Bundle
+import android.view.WindowManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -12,6 +13,13 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterFragmentActivity() {
     private val SMS_CHANNEL = "com.smartspend/sms"
     private val SMS_PERMISSION_REQ_CODE = 101
+    private var pendingPermissionResult: MethodChannel.Result? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Prevent screenshots and recents preview from leaking financial data (Domain G5)
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -24,8 +32,8 @@ class MainActivity : FlutterFragmentActivity() {
                 }
                 "requestSmsPermission" -> {
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
+                        pendingPermissionResult = result
                         ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS), SMS_PERMISSION_REQ_CODE)
-                        result.success(false)
                     } else {
                         result.success(true)
                     }
@@ -43,6 +51,15 @@ class MainActivity : FlutterFragmentActivity() {
                     result.notImplemented()
                 }
             }
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == SMS_PERMISSION_REQ_CODE) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingPermissionResult?.success(granted)
+            pendingPermissionResult = null
         }
     }
 

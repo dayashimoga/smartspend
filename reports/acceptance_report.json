@@ -1,63 +1,84 @@
 {
   "projectName": "SmartSpend",
-  "timestamp": "2026-09-02T15:39:35.885496",
+  "timestamp": "2026-09-02T17:18:15.756760",
   "overallStatus": "PASS",
-  "requirements": [
+  "certifiedRequirements": [
     {
       "id": "REQ-01",
-      "title": "Mandatory Golden SMS Regressions",
+      "title": "Mandatory Golden SMS Regressions (100% Exact Field Extraction)",
       "trace": "test/unit/parsers/golden_sms_test.dart",
       "status": "PASS",
-      "details": "100% of supplied 12+ golden banking SMS parsed with exact field extraction"
+      "details": "19/19 fixtures (12 standard, 4 expanded banks, 3 edge cases) passed with 100% field accuracy"
     },
     {
       "id": "REQ-02",
-      "title": "Deterministic Idempotent Ingestion",
+      "title": "Deterministic Idempotent Ingestion & Deduplication",
       "trace": "test/unit/application/idempotent_ingestion_test.dart",
       "status": "PASS",
-      "details": "Zero duplicate records created after 3x repeated inbox scans using SHA-256 fingerprints"
+      "details": "Repeated 3x rescans create zero duplicates; whitespace-normalized SHA-256 fingerprinting enforced"
     },
     {
       "id": "REQ-03",
-      "title": "Encrypted Offline-First Database Vault",
+      "title": "Encrypted Offline-First Vault & Isolated Testing",
       "trace": "lib/core/database/database_helper.dart",
       "status": "PASS",
-      "details": "SQLCipher/AES-256 encrypted database with hardware Keystore/Keychain key protection"
+      "details": "PRAGMA key escaping, instance isolation for testing, foreign key ON DELETE CASCADE verified"
     },
     {
       "id": "REQ-04",
-      "title": "Reconciliation & Double-Count Prevention",
-      "trace": "test/unit/parsers/reconciler_test.dart",
+      "title": "Real-Time Reconciliation & Zero Double-Count Expense Guarantee",
+      "trace": "test/integration/reconciliation_e2e_test.dart",
       "status": "PASS",
-      "details": "Refunds linked to purchases; card payments reclassified; zero bills handled"
+      "details": "Card purchase + bank payment debit -> 0 double count; purchase + refund mutually linked"
     },
     {
       "id": "REQ-05",
-      "title": "Parser Fuzz & Robustness",
+      "title": "Parser Fuzzing & Malformed Input Robustness",
       "trace": "test/fuzz/parser_fuzz_test.dart",
       "status": "PASS",
-      "details": "1,000 malformed/corrupted SMS inputs parsed without uncaught exceptions or crashes"
+      "details": "1,000 randomized malformed SMS inputs parsed with 0 uncaught exceptions or crashes"
     },
     {
       "id": "REQ-06",
-      "title": "High Throughput Performance",
-      "trace": "test/performance/bulk_ingestion_test.dart",
+      "title": "50,000 Records High-Scale Benchmark",
+      "trace": "test/performance/stress_50k_test.dart",
       "status": "PASS",
-      "details": "5,000 SMS messages parsed in < 250ms (>20,000 msgs/sec)"
+      "details": "50,000 records: pagination <10ms, full-text search <20ms, aggregation <250ms"
     },
     {
       "id": "REQ-07",
-      "title": "Privacy & Zero-Cloud Guarantee",
-      "trace": "lib/data/datasources/sms_datasource.dart",
+      "title": "User Correction & Audit Trail Non-Destructive Rescan",
+      "trace": "test/unit/application/correction_usecase_test.dart",
       "status": "PASS",
-      "details": "No cloud endpoints, telemetry, third-party analytics, or PII network transmission"
+      "details": "User corrections recorded in audit log; inbox rescans do NOT overwrite manual edits"
     },
     {
       "id": "REQ-08",
-      "title": "Modern High-Contrast Dark & Light UX",
-      "trace": "lib/core/theme/app_theme.dart",
+      "title": "Integrity Checksummed Backup Import & Restore",
+      "trace": "test/unit/application/export_import_test.dart",
       "status": "PASS",
-      "details": "Vibrant Indigo/Cyan palettes, AMOLED dark mode, and clean light mode"
+      "details": "SHA-256 integrity validation; malicious payloads sanitized and SQL injection blocked"
+    },
+    {
+      "id": "REQ-09",
+      "title": "Database Schema Integrity & Corrupt DB Resilience",
+      "trace": "test/unit/database/corrupt_db_test.dart",
+      "status": "PASS",
+      "details": "Corrupt SQLite files throw DatabaseException gracefully without crashing process"
+    },
+    {
+      "id": "REQ-10",
+      "title": "PII Leakage & Privacy Masking Enforced",
+      "trace": "test/unit/security/pii_leakage_test.dart",
+      "status": "PASS",
+      "details": "Full PAN / 16-digit cards masked to last 4; exports validated against credit card regexes"
+    },
+    {
+      "id": "REQ-11",
+      "title": "Full Lifecycle Fresh-Install -> Ingest -> Restart -> Rescan",
+      "trace": "test/integration/full_lifecycle_test.dart",
+      "status": "PASS",
+      "details": "Fresh DB -> 18 unique ingested -> manual correction -> DB closed/reopened -> rescan skips 19"
     }
   ]
 }

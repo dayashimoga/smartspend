@@ -78,7 +78,8 @@ class AccountsScreen extends ConsumerWidget {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.12),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Icon(Icons.account_balance,
@@ -187,8 +188,8 @@ class AccountsScreen extends ConsumerWidget {
                                       width: 44,
                                       height: 44,
                                       decoration: BoxDecoration(
-                                        color:
-                                            AppColors.expense.withOpacity(0.12),
+                                        color: AppColors.expense
+                                            .withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: const Icon(Icons.credit_card,

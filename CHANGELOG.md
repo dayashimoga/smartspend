@@ -39,3 +39,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Root widget mount and navigation smoke test.
 - CI/CD pipeline (`.github/workflows/ci.yml`), `Makefile`, and automated report generator (`scripts/generate_reports.dart`) producing HTML and JSON acceptance, parser, security, and performance reports.
 - Comprehensive 18-file documentation suite (`README.md`, `REQUIREMENTS.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `SMS_PARSER.md`, `SECURITY.md`, `PRIVACY.md`, `CODE_UNDERSTANDING.md`, `SETUP.md`, `CONFIGURATION.md`, `USER_GUIDE.md`, `TESTING.md`, `TROUBLESHOOTING.md`, `CI_CD.md`, `IMPLEMENTATION.md`, `PRODUCTION_READINESS.md`, `TODO.md`, `CHANGELOG.md`).
+
+## [1.1.0] - 2026-09-02
+
+### Forensic Production-Certification Pass
+
+#### Added
+- Forensic test suites certifying production readiness:
+  - `test/unit/application/correction_usecase_test.dart`: Field edits, exclusions, duplicate merges, splits, and audit trail.
+  - `test/unit/application/export_import_test.dart`: SHA-256 integrity verification, database restore, and malicious input sanitization.
+  - `test/integration/reconciliation_e2e_test.dart`: End-to-end guarantee of zero double-counted expenses during SMS ingestion.
+  - `test/integration/full_lifecycle_test.dart`: Fresh-install -> ingestion -> manual correction -> process kill / restart -> rescan non-destructive verification.
+  - `test/unit/database/migration_test.dart`: SQLite indexing and `ON DELETE CASCADE` foreign key cascading integrity.
+  - `test/unit/database/corrupt_db_test.dart`: Corrupt database resilience throwing `DatabaseException` without application crash.
+  - `test/unit/security/pii_leakage_test.dart`: Strict data masking (only last 4 digits revealed) and zero PAN leakage in JSON/CSV exports.
+  - `test/performance/stress_50k_test.dart`: High-scale benchmark testing 50,000 records (<10ms pagination, <20ms search, <200ms aggregation).
+  - `test/unit/domain/entities_test.dart`: Entity serialization, `copyWith`, and enum coverage for Clean Architecture models.
+  - `test/unit/repositories/repositories_test.dart`: Complete repository CRUD testing.
+- Automated security audit and SBOM generator (`scripts/security_audit.dart`): Scans codebase for secret keys and creates CycloneDX `reports/sbom.json`.
+- Automated test coverage calculator (`scripts/calculate_coverage.dart`) and architectural layer breakdown (`scripts/coverage_by_layer.dart`).
+
+#### Changed
+- `lib/core/database/database_helper.dart`: Replaced static state with instance-isolated database references to prevent test race conditions; escaped PRAGMA encryption keys; enabled foreign keys on database open.
+- `lib/application/sms/ingest_sms_usecase.dart`: Integrated real-time reconciliation into ingestion flow, reclassifying bank card debits and pairing refunds on arrival.
+- `lib/data/parsers/reconciler.dart`: Added `reconcileSingle` and `ReconciliationMatch` for incremental reconciliation.
+- `lib/application/export/export_backup_usecase.dart`: Added `importFromJson` with SHA-256 checksum verification and sanitization against malicious payloads.
+- `lib/data/parsers/parser_pipeline.dart`: Added early detection and classification for OTPs and spam loan offers.
+- `android/app/src/main/kotlin/com/smartspend/smartspend/MainActivity.kt`: Added asynchronous `onRequestPermissionsResult` callback handler and `WindowManager.LayoutParams.FLAG_SECURE` to block recents screenshot data leaks.
+- `android/app/src/main/AndroidManifest.xml`: Disabled ADB backups (`android:allowBackup="false"`, `android:fullBackupContent="false"`).
+- `lib/core/theme/app_theme.dart` and presentation screens: Modernized deprecated `.withOpacity(...)` calls to `.withValues(alpha: ...)`.
+- `.github/workflows/ci.yml`: Updated with all 11 forensic quality gates, security scans, coverage validation, and release AAB build with R8 shrinking enabled.
+- `test/fixtures/golden_sms.json`: Expanded with OTP, promotional, and whitespace edge case fixtures (19 fixtures total).
+- `test/unit/parsers/golden_sms_test.dart`: Refactored to execute 19 granular tests with exact field match assertions (100% pass).
+

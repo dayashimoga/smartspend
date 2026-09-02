@@ -24,7 +24,7 @@ class DashboardScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.shield_outlined,
@@ -116,10 +116,11 @@ class DashboardScreen extends ConsumerWidget {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.warning.withOpacity(0.12),
+                            color: AppColors.warning.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AppColors.warning.withOpacity(0.3)),
+                                color:
+                                    AppColors.warning.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [
@@ -154,10 +155,10 @@ class DashboardScreen extends ConsumerWidget {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.info.withOpacity(0.12),
+                            color: AppColors.info.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AppColors.info.withOpacity(0.3)),
+                                color: AppColors.info.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [

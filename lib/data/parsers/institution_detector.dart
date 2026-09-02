@@ -25,12 +25,15 @@ class InstitutionDetector {
     if (b.contains('AXIS BANK') || b.contains('AXIS')) return Bank.axis;
     if (b.contains('SBI CREDIT CARD') ||
         b.contains('STATE BANK') ||
-        b.contains('SBI')) return Bank.sbi;
+        b.contains('SBI')) {
+      return Bank.sbi;
+    }
     if (b.contains('HSBC')) return Bank.hsbc;
     if (b.contains('YES BANK') || b.contains('YESBANK')) return Bank.yesBank;
     if (b.contains('IDFC FIRST') || b.contains('IDFC')) return Bank.idfcFirst;
-    if (b.contains('INDUSIND BANK') || b.contains('INDUSIND'))
+    if (b.contains('INDUSIND BANK') || b.contains('INDUSIND')) {
       return Bank.indusind;
+    }
     if (b.contains('UJJIVAN')) return Bank.ujjivan;
     if (b.contains('ONECARD')) return Bank.onecard;
     if (b.contains('SOUTH INDIAN BANK') || b.contains('SIB')) return Bank.sib;

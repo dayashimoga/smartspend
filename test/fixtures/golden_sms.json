@@ -258,5 +258,42 @@
       "available_limit": 88160.00,
       "confidence": "HIGH"
     }
+  },
+  {
+    "id": "edge_otp_1",
+    "raw_sms": "Your OTP for transaction of Rs.500 at Amazon is 948201. Do not share with anyone.",
+    "sender": "HDFCBK",
+    "timestamp": "2026-02-05T12:00:00Z",
+    "expected": {
+      "type": "unknown",
+      "confidence": "UNPARSED"
+    }
+  },
+  {
+    "id": "edge_promo_1",
+    "raw_sms": "Get pre-approved personal loan of Rs.5,00,000 instantly at 10.5% interest! Apply at hdfcbk.io/loan today.",
+    "sender": "HDFCBK",
+    "timestamp": "2026-02-06T15:00:00Z",
+    "expected": {
+      "type": "unknown",
+      "confidence": "UNPARSED"
+    }
+  },
+  {
+    "id": "edge_whitespace_1",
+    "raw_sms": "   INR   483.40   spent   using ICICI Bank Card XX4000 on 18-Jan-26 on AMAZON PAY IN E. Avl Limit: INR 1,96,021.82.   ",
+    "sender": "ICICIB",
+    "timestamp": "2026-01-18T14:30:00Z",
+    "expected": {
+      "type": "purchase",
+      "bank": "ICICI",
+      "card_last4": "4000",
+      "amount": 483.40,
+      "currency": "INR",
+      "date": "2026-01-18",
+      "merchant": "AMAZON PAY IN E",
+      "available_limit": 196021.82,
+      "confidence": "HIGH"
+    }
   }
 ]

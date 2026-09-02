@@ -10,7 +10,8 @@ class DatabaseHelper {
   static const _dbVersion = 1;
 
   static DatabaseHelper? _instance;
-  static Database? _database;
+  static Database? _staticDatabase;
+  Database? _instanceDatabase;
   final String? _customDbPath;
 
   DatabaseHelper._internal({String? customDbPath})
@@ -29,9 +30,19 @@ class DatabaseHelper {
   }
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    if (_customDbPath != null) {
+      if (_instanceDatabase != null && _instanceDatabase!.isOpen) {
+        return _instanceDatabase!;
+      }
+      _instanceDatabase = await _initDatabase();
+      return _instanceDatabase!;
+    }
+
+    if (_staticDatabase != null && _staticDatabase!.isOpen) {
+      return _staticDatabase!;
+    }
+    _staticDatabase = await _initDatabase();
+    return _staticDatabase!;
   }
 
   Future<Database> _initDatabase() async {
@@ -60,14 +71,20 @@ class DatabaseHelper {
 
     // Retrieve or generate the AES-256 encryption key
     final encryptionKey = await KeyManager.getOrCreateDatabaseKey();
+    final escapedKey = encryptionKey.replaceAll("'", "''");
 
     return await openDatabase(
       dbPath,
       version: _dbVersion,
-      onOpen: (db) async {
-        // Enforce SQLCipher encryption key and foreign keys
+      onConfigure: (db) async {
         try {
-          await db.execute("PRAGMA key = '$encryptionKey'");
+          await db.execute('PRAGMA foreign_keys = ON');
+        } catch (_) {}
+      },
+      onOpen: (db) async {
+        // Enforce SQLCipher encryption key
+        try {
+          await db.execute("PRAGMA key = '$escapedKey'");
           await db.execute('PRAGMA foreign_keys = ON');
         } catch (_) {}
       },
@@ -223,15 +240,29 @@ class DatabaseHelper {
     ''');
   }
 
+  Future<void> close() async {
+    if (_instanceDatabase != null && _instanceDatabase!.isOpen) {
+      await _instanceDatabase!.close();
+      _instanceDatabase = null;
+    }
+  }
+
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     // Migration logic for future versions
+    if (oldVersion < 2) {
+      // Example v2 migration hook
+      try {
+        await db.execute('ALTER TABLE budgets ADD COLUMN notes TEXT');
+      } catch (_) {}
+    }
   }
 
   /// Close and reset the database (for testing or user vault reset)
   static Future<void> resetDatabaseForTesting() async {
-    if (_database != null && _database!.isOpen) {
-      await _database!.close();
-      _database = null;
+    if (_staticDatabase != null && _staticDatabase!.isOpen) {
+      await _staticDatabase!.close();
+      _staticDatabase = null;
     }
+    _instance = null;
   }
 }
