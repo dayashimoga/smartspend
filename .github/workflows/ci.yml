@@ -1,0 +1,100 @@
+name: SmartSpend CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  quality-and-test:
+    name: Quality Gates & Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Format Check
+        run: dart format --set-exit-if-changed .
+
+      - name: Static Analysis
+        run: flutter analyze --fatal-infos
+
+      - name: Mandatory Golden SMS Fixture Regressions
+        run: flutter test test/unit/parsers/golden_sms_test.dart
+
+      - name: Parser Fuzz & Property Tests
+        run: flutter test test/fuzz/parser_fuzz_test.dart
+
+      - name: Bulk Performance Benchmark
+        run: flutter test test/performance/bulk_ingestion_test.dart
+
+      - name: Full Test Suite with Coverage
+        run: flutter test --coverage
+
+      - name: Security Vulnerability Audit
+        run: dart pub audit
+
+      - name: Generate Reports
+        run: dart run scripts/generate_reports.dart
+
+      - name: Upload Test & Coverage Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-reports
+          path: reports/
+
+  build-android:
+    name: Build Android Artifacts
+    needs: quality-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Debug APK
+        run: flutter build apk --debug
+
+      - name: Build Release App Bundle (AAB)
+        run: flutter build appbundle --release --no-shrink
+
+      - name: Upload APK & AAB Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-binaries
+          path: |
+            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/bundle/release/app-release.aab

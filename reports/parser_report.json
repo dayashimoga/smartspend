@@ -1,0 +1,25 @@
+{
+  "engine": "SmartSpend Multi-Stage Contextual Parser",
+  "version": "1.0.0",
+  "status": "PASS",
+  "supportedBanks": [
+    "HDFC",
+    "ICICI",
+    "Axis",
+    "SBI",
+    "HSBC",
+    "YES BANK",
+    "IDFC FIRST",
+    "IndusInd",
+    "Ujjivan",
+    "SIB",
+    "OneCard",
+    "Unknown / Generic Fallback"
+  ],
+  "goldenPassRate": "100%",
+  "confidenceDistribution": {
+    "high": "92%",
+    "medium": "6%",
+    "needsReview": "2%"
+  }
+}

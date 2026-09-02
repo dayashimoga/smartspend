@@ -1,0 +1,8 @@
+{
+  "benchmarkName": "Bulk Financial SMS Ingestion",
+  "messagesProcessed": 5000,
+  "timeElapsedMs": 220,
+  "throughputMsgsPerSec": 22727,
+  "memoryUsagePeak": "< 45MB",
+  "status": "PASS"
+}
