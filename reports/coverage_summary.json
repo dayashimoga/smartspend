@@ -1,6 +1,6 @@
 {
-  "totalLines": 2725,
-  "linesHit": 1451,
-  "coveragePercentage": 53.25,
-  "status": "WARNING"
+  "totalLines": 2817,
+  "linesHit": 2551,
+  "coveragePercentage": 90.56,
+  "status": "PASS"
 }

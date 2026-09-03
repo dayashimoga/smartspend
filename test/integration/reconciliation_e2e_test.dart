@@ -114,5 +114,121 @@ void main() {
       expect(refund.isReconciled, isTrue);
       expect(refund.reconciledWithId, equals(purchase.id));
     });
+
+    test(
+        'Multiple partial payments of credit card bill do not double-count expense',
+        () async {
+      // Message 1: Card purchase Rs 5000
+      final smsPurchase = {
+        'sender': 'ICICIB',
+        'body':
+            'INR 5,000.00 spent using ICICI Bank Card XX4000 on 05-Jan-26 at Croma. Avl Limit: INR 1,50,000.00.',
+        'timestamp': DateTime(2026, 1, 5, 11, 0),
+      };
+
+      // Message 2: Partial payment 1 of Rs 2000 from HDFC Bank
+      final smsPayment1 = {
+        'sender': 'HDFCBK',
+        'body':
+            'Sent Rs.2,000.00 From HDFC Bank A/C *0564 To CRED Credit Card Payment On 15/01/26 Ref 111111',
+        'timestamp': DateTime(2026, 1, 15, 10, 0),
+      };
+
+      // Message 3: Partial payment 2 of Rs 3000 from Axis Bank
+      final smsPayment2 = {
+        'sender': 'AXISBK',
+        'body':
+            'Rs. 3,000.00 debited from Axis Bank A/c no. XX1234 on 16-01-26 for Card Payment Ref 222222.',
+        'timestamp': DateTime(2026, 1, 16, 14, 0),
+      };
+
+      await ingestUseCase.execute([smsPurchase, smsPayment1, smsPayment2]);
+
+      final allTxns = await txnRepo.getAllTransactions();
+      expect(allTxns.length, equals(3));
+
+      final billPayments =
+          allTxns.where((t) => t.type == TransactionType.billPayment).toList();
+      expect(billPayments.length, equals(2));
+
+      final summary = await txnRepo.getFinancialSummary();
+      expect(summary.totalExpense, equals(5000.0));
+    });
+
+    test(
+        'Own-account transfer between user accounts nets to zero income and expense',
+        () async {
+      // Message 1: Debit from HDFC savings account
+      final smsDebit = {
+        'sender': 'HDFCBK',
+        'body':
+            'Rs 15000.00 debited from HDFC Bank A/C *1111 on 10-Jan-26 to A/C *2222 Ref 777888',
+        'timestamp': DateTime(2026, 1, 10, 14, 0),
+      };
+
+      // Message 2: Credit to ICICI savings account within 30 minutes
+      final smsCredit = {
+        'sender': 'ICICIB',
+        'body':
+            'Rs 15,000.00 credited to ICICI Bank A/C XX2222 on 10-Jan-26 from A/C *1111. Total Bal: INR 45,000.00.',
+        'timestamp': DateTime(2026, 1, 10, 14, 15),
+      };
+
+      await ingestUseCase.execute([smsDebit, smsCredit]);
+
+      final allTxns = await txnRepo.getAllTransactions();
+      expect(allTxns.length, equals(2));
+
+      final transfers =
+          allTxns.where((t) => t.type == TransactionType.transfer).toList();
+      expect(transfers.length, equals(2));
+      expect(transfers[0].isReconciled, isTrue);
+      expect(transfers[1].isReconciled, isTrue);
+
+      final summary = await txnRepo.getFinancialSummary();
+      expect(summary.totalExpense, equals(0.0));
+      expect(summary.totalIncome, equals(0.0));
+    });
+
+    test(
+        'Ambiguous same-value transactions resolve to correct merchant and proximity',
+        () async {
+      // Message 1: Spend Rs 500 at Cafe Coffee Day on Jan 5
+      final sms1 = {
+        'sender': 'ICICIB',
+        'body':
+            'INR 500.00 spent using ICICI Bank Card XX4000 on 05-Jan-26 on Cafe Coffee Day. Avl Limit: INR 1,90,000.00.',
+        'timestamp': DateTime(2026, 1, 5, 9, 0),
+      };
+
+      // Message 2: Spend Rs 500 at BookStore on Jan 10
+      final sms2 = {
+        'sender': 'ICICIB',
+        'body':
+            'INR 500.00 spent using ICICI Bank Card XX4000 on 10-Jan-26 on BookStore. Avl Limit: INR 1,89,500.00.',
+        'timestamp': DateTime(2026, 1, 10, 15, 0),
+      };
+
+      // Message 3: Refund of Rs 500 from BookStore on Jan 11
+      final smsRefund = {
+        'sender': 'ICICIB',
+        'body':
+            'INR 500.00 refunded to your ICICI Bank Card XX4000 on 11-Jan-26 from BookStore. Avl Limit: INR 1,90,000.00.',
+        'timestamp': DateTime(2026, 1, 11, 12, 0),
+      };
+
+      await ingestUseCase.execute([sms1, sms2, smsRefund]);
+
+      final allTxns = await txnRepo.getAllTransactions();
+      final cafe = allTxns.firstWhere((t) => t.merchant == 'Cafe Coffee Day');
+      final bookstore = allTxns.firstWhere((t) => t.merchant == 'BookStore');
+      final refund =
+          allTxns.firstWhere((t) => t.type == TransactionType.refund);
+
+      // Crucial Gate: BookStore must be reconciled with refund, Cafe Coffee Day must NOT be reconciled!
+      expect(bookstore.isReconciled, isTrue);
+      expect(bookstore.reconciledWithId, equals(refund.id));
+      expect(cafe.isReconciled, isFalse);
+    });
   });
 }

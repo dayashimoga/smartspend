@@ -137,7 +137,8 @@ void main() {
     await dbHelper.close();
   });
 
-  testWidgets('SmartSpendApp comprehensive UI navigation and screen interaction test',
+  testWidgets(
+      'SmartSpendApp comprehensive UI navigation and screen interaction test',
       (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

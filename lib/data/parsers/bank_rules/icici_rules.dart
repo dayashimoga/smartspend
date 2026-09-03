@@ -22,7 +22,7 @@ class IciciRules extends BankRule {
     // 1. ICICI Card Purchase
     // "INR 483.40 spent using ICICI Bank Card XX4000 on 18-Jan-26 on AMAZON PAY IN E. Avl Limit: INR 1,96,021.82."
     final spentMatch = RegExp(
-      r'(?:INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s+spent\s+using\s+ICICI\s+Bank\s+Card\s+XX(\d{4})\s+on\s+([0-9]{1,2}-[a-zA-Z]{3}-[0-9]{2,4})\s+on\s+(.+?)(?:\.|\s+Avl\s+Limit)',
+      r'(?:INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s+spent\s+(?:using\s+)?ICICI\s+Bank\s+Card\s+XX(\d{4})\s+on\s+([0-9]{1,2}-[a-zA-Z]{3}-[0-9]{2,4})\s+(?:on|at)\s+(.+?)(?:\.|\s+Avl\s+Limit|$)',
       caseSensitive: false,
     ).firstMatch(normalizedBody);
 

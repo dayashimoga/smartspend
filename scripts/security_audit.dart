@@ -36,7 +36,9 @@ void main() async {
             for (final pattern in secretPatterns) {
               if (pattern.hasMatch(line)) {
                 // Ignore benign constants or comments
-                if (!line.contains('PRAGMA') && !line.contains('KeyManager') && !line.contains('test')) {
+                if (!line.contains('PRAGMA') &&
+                    !line.contains('KeyManager') &&
+                    !line.contains('test')) {
                   leakedSecrets.add({
                     'file': entity.path,
                     'line': i + 1,
@@ -109,7 +111,8 @@ void main() async {
   );
 
   // ignore: avoid_print
-  print('Security Audit Status: ${auditResult['status']} (0 secrets found, SBOM generated)');
+  print(
+      'Security Audit Status: ${auditResult['status']} (0 secrets found, SBOM generated)');
 
   if (!isClean) {
     exit(1);

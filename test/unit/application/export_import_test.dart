@@ -137,6 +137,76 @@ void main() {
       await freshDbHelper.close();
     });
 
+    test('Authenticated export and import with PBKDF2 HMAC-SHA256', () async {
+      const passphrase = 'MySuperSecretPassword@2026';
+      final authBackup =
+          await exportImportUseCase.exportToJson(passphrase: passphrase);
+      final decoded = jsonDecode(authBackup) as Map<String, dynamic>;
+
+      expect(decoded['format'], equals('smartspend-auth-v2'));
+      expect(decoded.containsKey('auth_tag'), isTrue);
+      expect(decoded.containsKey('salt'), isTrue);
+      expect(decoded['iterations'], equals(10000));
+
+      // 1. Successful restore with correct passphrase
+      final freshDbHelper = DatabaseHelper.inMemory();
+      final freshSmsRepo = SmsRepository(dbHelper: freshDbHelper);
+      await freshSmsRepo.saveSms(
+        SmsRecord(
+          id: 'sms_1',
+          sender: 'HDFCBK',
+          body: 'Sample SMS',
+          timestamp: DateTime(2026, 1, 1),
+          fingerprint: 'fp_1',
+          ingestedAt: DateTime.now(),
+        ),
+      );
+      final freshUseCase = ExportBackupUseCase(
+        txnRepo: TransactionRepository(dbHelper: freshDbHelper),
+        acctRepo: AccountRepository(dbHelper: freshDbHelper),
+        cardRepo: CardRepository(dbHelper: freshDbHelper),
+        billRepo: BillRepository(dbHelper: freshDbHelper),
+        fastagRepo: FastagRepository(dbHelper: freshDbHelper),
+      );
+
+      final result =
+          await freshUseCase.importFromJson(authBackup, passphrase: passphrase);
+      expect(result, isNotNull);
+
+      // 2. Failure with wrong passphrase
+      expect(
+        () => freshUseCase.importFromJson(authBackup,
+            passphrase: 'IncorrectPassword!'),
+        throwsA(isA<SecurityException>()),
+      );
+
+      // 3. Failure with missing passphrase
+      expect(
+        () => freshUseCase.importFromJson(authBackup),
+        throwsA(isA<SecurityException>()),
+      );
+
+      // 4. Failure when payload is tampered
+      final tamperedPayload = Map<String, dynamic>.from(decoded['payload']);
+      tamperedPayload['injected_key'] = 'unauthorized_change';
+      final tamperedAuthBackup = jsonEncode({
+        'format': decoded['format'],
+        'kdf': decoded['kdf'],
+        'salt': decoded['salt'],
+        'iterations': decoded['iterations'],
+        'auth_tag': decoded['auth_tag'],
+        'payload': tamperedPayload,
+      });
+
+      expect(
+        () => freshUseCase.importFromJson(tamperedAuthBackup,
+            passphrase: passphrase),
+        throwsA(isA<SecurityException>()),
+      );
+
+      await freshDbHelper.close();
+    });
+
     test('importFromJson rejects tampered backup files with SecurityException',
         () async {
       final backupJson = await exportImportUseCase.exportToJson();

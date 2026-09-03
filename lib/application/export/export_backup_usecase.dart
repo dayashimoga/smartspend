@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import '../../core/utils/crypto_utils.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/bill.dart';
 import '../../domain/entities/credit_card.dart';
@@ -49,8 +50,9 @@ class ExportBackupUseCase {
         _billRepo = billRepo,
         _fastagRepo = fastagRepo;
 
-  /// Exports full financial database into an encrypted or plain JSON format.
-  Future<String> exportToJson() async {
+  /// Exports full financial database into an authenticated JSON format.
+  /// If [passphrase] is supplied, protects the backup with PBKDF2-derived HMAC-SHA256 authentication.
+  Future<String> exportToJson({String? passphrase}) async {
     final txns =
         await _txnRepo.getAllTransactions(limit: 50000, includeExcluded: true);
     final accts = await _acctRepo.getAllAccounts();
@@ -59,7 +61,7 @@ class ExportBackupUseCase {
     final fastags = await _fastagRepo.getAllFastag();
 
     final data = {
-      'version': '1.0.0',
+      'version': '1.1.0',
       'exported_at': DateTime.now().toIso8601String(),
       'transactions': txns.map((t) => t.toMap()).toList(),
       'accounts': accts.map((a) => a.toMap()).toList(),
@@ -68,17 +70,40 @@ class ExportBackupUseCase {
       'fastag': fastags.map((f) => f.toMap()).toList(),
     };
 
-    final jsonString = jsonEncode(data);
-    final checksum = sha256.convert(utf8.encode(jsonString)).toString();
+    final payloadBytes = utf8.encode(jsonEncode(data));
 
+    if (passphrase != null && passphrase.isNotEmpty) {
+      final saltBytes = CryptoUtils.generateRandomBytes(16);
+      final saltHex =
+          saltBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      final key = CryptoUtils.pbkdf2HmacSha256(
+        passphrase: passphrase,
+        salt: saltBytes,
+        iterations: 10000,
+        keyLength: 32,
+      );
+      final authTag = CryptoUtils.computeHmacHex(key, payloadBytes);
+
+      return jsonEncode({
+        'format': 'smartspend-auth-v2',
+        'kdf': 'PBKDF2-HMAC-SHA256',
+        'salt': saltHex,
+        'iterations': 10000,
+        'auth_tag': authTag,
+        'payload': data,
+      });
+    }
+
+    final checksum = sha256.convert(payloadBytes).toString();
     return jsonEncode({
       'checksum': checksum,
       'payload': data,
     });
   }
 
-  /// Restores financial records from JSON string after validating SHA-256 integrity and sanitizing inputs.
-  Future<ImportResult> importFromJson(String rawJson) async {
+  /// Restores financial records from JSON string after validating authenticated integrity and sanitizing inputs.
+  Future<ImportResult> importFromJson(String rawJson,
+      {String? passphrase}) async {
     final Map<String, dynamic> decoded;
     try {
       decoded = jsonDecode(rawJson) as Map<String, dynamic>;
@@ -86,20 +111,52 @@ class ExportBackupUseCase {
       throw const FormatException('Invalid JSON backup file.');
     }
 
-    if (!decoded.containsKey('checksum') || !decoded.containsKey('payload')) {
-      throw const FormatException(
-          'Corrupt backup structure: missing checksum or payload.');
+    if (!decoded.containsKey('payload')) {
+      throw const FormatException('Corrupt backup structure: missing payload.');
     }
 
-    final claimedChecksum = decoded['checksum'] as String;
     final payload = decoded['payload'] as Map<String, dynamic>;
+    final payloadBytes = utf8.encode(jsonEncode(payload));
 
-    // 1. Verify SHA-256 integrity
-    final recomputedChecksum =
-        sha256.convert(utf8.encode(jsonEncode(payload))).toString();
-    if (claimedChecksum != recomputedChecksum) {
-      throw const SecurityException(
-          'Backup integrity failure: Checksum mismatch. The file may have been modified or corrupted.');
+    // 1. Authenticated v2 format check
+    if (decoded['format'] == 'smartspend-auth-v2') {
+      if (passphrase == null || passphrase.isEmpty) {
+        throw const SecurityException(
+            'Authentication required: Passphrase is required to restore this authenticated backup.');
+      }
+
+      final claimedTag = decoded['auth_tag'] as String? ?? '';
+      final saltHex = decoded['salt'] as String? ?? '';
+      final iterations = decoded['iterations'] as int? ?? 10000;
+
+      final saltBytes = <int>[];
+      for (int i = 0; i < saltHex.length; i += 2) {
+        saltBytes.add(int.parse(saltHex.substring(i, i + 2), radix: 16));
+      }
+
+      final key = CryptoUtils.pbkdf2HmacSha256(
+        passphrase: passphrase,
+        salt: saltBytes,
+        iterations: iterations,
+        keyLength: 32,
+      );
+
+      final recomputedTag = CryptoUtils.computeHmacHex(key, payloadBytes);
+      if (!CryptoUtils.constantTimeHexEquals(claimedTag, recomputedTag)) {
+        throw const SecurityException(
+            'Backup authentication failure: Invalid passphrase or tampered backup payload.');
+      }
+    } else if (decoded.containsKey('checksum')) {
+      // Legacy v1 checksum verification
+      final claimedChecksum = decoded['checksum'] as String;
+      final recomputedChecksum = sha256.convert(payloadBytes).toString();
+      if (claimedChecksum != recomputedChecksum) {
+        throw const SecurityException(
+            'Backup integrity failure: Checksum mismatch. The file may have been modified or corrupted.');
+      }
+    } else {
+      throw const FormatException(
+          'Unrecognized backup format: missing auth_tag or checksum.');
     }
 
     int txnsCount = 0;

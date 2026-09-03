@@ -2,9 +2,9 @@ name: SmartSpend CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   workflow_dispatch:
 
 jobs:
@@ -24,80 +24,40 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.0'
           channel: 'stable'
           cache: true
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Format Check
-        run: dart format --set-exit-if-changed .
+      - name: Code Format Check
+        run: dart format --output=none --set-exit-if-changed .
 
-      - name: Static Analysis
+      - name: Static Analysis (--fatal-infos --fatal-warnings)
         run: flutter analyze --fatal-infos --fatal-warnings
 
       - name: Mandatory Golden SMS Fixture Regressions (100% PASS)
         run: flutter test test/unit/parsers/golden_sms_test.dart
 
-      - name: Parser Fuzz & Property Tests
-        run: flutter test test/fuzz/parser_fuzz_test.dart
-
-      - name: Bulk Ingestion Performance Benchmark
-        run: flutter test test/performance/bulk_ingestion_test.dart
-
-      - name: 50,000 Records High-Scale Benchmark
-        run: flutter test test/performance/stress_50k_test.dart
-
-      - name: Reconciliation & Zero Double-Count E2E Test
-        run: flutter test test/integration/reconciliation_e2e_test.dart
-
-      - name: Full Lifecycle (Ingest -> Correct -> Restart -> Rescan) E2E Test
-        run: flutter test test/integration/full_lifecycle_test.dart
-
-      - name: Correction & Audit Log Test
-        run: flutter test test/unit/application/correction_usecase_test.dart
-
-      - name: Export & Import Checksum Verification Test
-        run: flutter test test/unit/application/export_import_test.dart
-
-      - name: Database Migration & Foreign Key Cascade Test
-        run: flutter test test/unit/database/migration_test.dart
-
-      - name: Corrupt Database Resilience Test
-        run: flutter test test/unit/database/corrupt_db_test.dart
-
-      - name: PII Leakage & Data Masking Test
-        run: flutter test test/unit/security/pii_leakage_test.dart
-
-      - name: Domain Entities Serialization & CopyWith Test
-        run: flutter test test/unit/domain/entities_test.dart
-
-      - name: Repositories CRUD & Query Forensic Test
-        run: flutter test test/unit/repositories/repositories_test.dart
-
       - name: Full Test Suite with Coverage
         run: flutter test --coverage
 
-      - name: Verify Code Coverage Threshold (>90%)
-        run: |
-          sudo apt-get install -y lcov
-          lcov --summary coverage/lcov.info
-
-      - name: Dependency Health & Vulnerability Scan
-        run: dart pub outdated --no-dev-dependencies
+      - name: Enforce Whole-Project Coverage Quality Gate (>90%)
+        run: dart run scripts/calculate_coverage.dart
 
       - name: Automated Security, Secrets & SBOM Audit
         run: dart run scripts/security_audit.dart
 
-      - name: Generate Reports
+      - name: Generate Requirements Traceability & Forensic Reports
         run: dart run scripts/generate_reports.dart
 
       - name: Upload Verification & Forensic Reports
         uses: actions/upload-artifact@v4
         with:
-          name: verification-reports
-          path: reports/
+          name: smartspend-verification-reports-${{ github.sha }}
+          path: |
+            reports/
+            coverage/lcov.info
 
   build-android:
     name: Build Android Binaries & Validate Shrinking
@@ -116,23 +76,29 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.0'
           channel: 'stable'
           cache: true
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Debug APK
-        run: flutter build apk --debug
+      - name: Build Release APK
+        run: flutter build apk --release
 
       - name: Build Release App Bundle (AAB with R8 code shrinking)
         run: flutter build appbundle --release
 
-      - name: Upload Android Binaries
+      - name: Generate Checksums (SHA256SUMS)
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/smartspend-release.apk
+          cp build/app/outputs/bundle/release/app-release.aab dist/smartspend-release.aab
+          cd dist
+          sha256sum smartspend-release.apk smartspend-release.aab > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload Release Binaries & Checksums
         uses: actions/upload-artifact@v4
         with:
-          name: android-binaries
-          path: |
-            build/app/outputs/flutter-apk/app-debug.apk
-            build/app/outputs/bundle/release/app-release.aab
+          name: smartspend-binaries-${{ github.sha }}
+          path: dist/

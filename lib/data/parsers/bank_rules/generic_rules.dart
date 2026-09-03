@@ -79,7 +79,7 @@ class GenericRules extends BankRule {
     // 6. Contextual Merchant
     String? merchant;
     final merchantMatch = RegExp(
-            r'(?:at|on|to)\s+([A-Za-z0-9\s&._-]+?)(?:\s+on|\s+at|\s+Ref|\s+Bal|\.|$)',
+            r'(?:at|on|to|from)\s+([A-Za-z0-9\s&._-]+?)(?:\s+on|\s+at|\s+from|\s+Ref|\s+Bal|\.|$)',
             caseSensitive: false)
         .firstMatch(normalizedBody);
     if (merchantMatch != null) {

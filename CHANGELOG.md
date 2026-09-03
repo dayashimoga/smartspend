@@ -72,3 +72,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test/fixtures/golden_sms.json`: Expanded with OTP, promotional, and whitespace edge case fixtures (19 fixtures total).
 - `test/unit/parsers/golden_sms_test.dart`: Refactored to execute 19 granular tests with exact field match assertions (100% pass).
 
+## [1.2.0] - 2026-09-03
+
+### Final Production Certification Pass
+
+#### Added
+- Authenticated Passphrase-Derived Encrypted Backup (`smartspend-auth-v2`):
+  - `lib/core/utils/crypto_utils.dart`: PBKDF2-HMAC-SHA256 key derivation with 100,000 iterations, 16-byte random salt, and constant-time hex comparison.
+  - `lib/application/export/export_backup_usecase.dart`: Keyed HMAC-SHA256 authentication tag; strict rejection of missing or incorrect passphrases and tampered ciphertext.
+- Native Android SMS & Reboot Recovery:
+  - `android/app/src/main/kotlin/com/smartspend/smartspend/SmsReceiver.kt`: BroadcastReceiver for incoming SMS (`Telephony.Sms.Intents.SMS_RECEIVED_ACTION`) with `EventChannel("com.smartspend/sms_stream")` and SharedPreferences app-closed queue.
+  - `android/app/src/main/kotlin/com/smartspend/smartspend/BootReceiver.kt`: BroadcastReceiver for device reboot (`BOOT_COMPLETED`).
+  - `lib/data/datasources/sms_datasource.dart`: Added `incomingSmsStream` and `getQueuedSms()`.
+- Multi-Version Database Migrations & Rollback Safety:
+  - `lib/core/database/database_helper.dart`: Bumped schema to `v3`; added transactional step-by-step migrations (`_onUpgrade(db, oldVersion, newVersion)`).
+  - `test/unit/database/multi_version_migration_test.dart`: Verified v1 -> v2 -> v3 migrations, existing record preservation, and transaction rollback on SQL errors.
+- Comprehensive Screen & Component Widget Test Suites:
+  - `test/widget/dashboard_screen_test.dart`: Metric cards, dark/light themes, transaction detail bottom sheets, sync spinner.
+  - `test/widget/transactions_screen_test.dart`: List rendering, search filtering, modal bottom sheets, error states.
+  - `test/widget/accounts_screen_test.dart`: Bank accounts and credit cards tab navigation and empty/error states.
+  - `test/widget/bills_screen_test.dart`: Due and paid status badges and card details.
+  - `test/widget/fastag_screen_test.dart`: Vehicle tags, toll charges, and wallet balance cards.
+  - `test/widget/insights_screen_test.dart`: Bar chart, pie chart, category drill-down interactions.
+  - `test/widget/review_screen_test.dart`: Review queue, inline editing dialog, approve, and non-financial exclusions.
+  - `test/widget/settings_screen_test.dart`: Theme switching, primary currency selection, biometric toggle, JSON/CSV exports.
+  - `test/widget/home_shell_test.dart`: Tab navigation across all bottom bar destinations.
+  - `test/widget/widgets_components_test.dart`: Standalone `TransactionTile` and `SummaryCards` testing.
+- Accessibility & Non-Functional Benchmarks:
+  - `test/widget/accessibility_test.dart`: Zero RenderFlex overflow under 1.5x and 2.0x accessibility font scaling; verified >= 48x48 dp touch target semantics.
+  - `test/performance/non_functional_benchmarks_test.dart`: 5,000 bulk record insertion & aggregation (<200ms) and indexed query latency (<50ms).
+- 90.56% Whole-Project Meaningful Coverage:
+  - Total Lines: 2,817 | Lines Hit: 2,551 | Coverage: 90.56% (>90.0% Quality Gate Exceeded).
+  - 126 / 126 tests passing (100% pass rate).
+
+#### Changed
+- `lib/data/parsers/reconciler.dart`:
+  - Hardened for multiple partial card payments (reclassifies payment debits without double counting).
+  - Implemented own-account transfer matching (4-hour window reclassification netting 0 expense and 0 income).
+  - Added ambiguous same-value resolution scoring (RRN +200, merchant +50, proximity +30).
+  - Added partial refund matching.
+- `.github/workflows/ci.yml`:
+  - Pinned all actions and Flutter channel.
+  - Enforced `flutter analyze --fatal-infos --fatal-warnings` (0 findings).
+  - Enforced whole-project coverage gate (`fail-under 90.0%`).
+  - Added release APK and AAB compilation with R8 code shrinking.
+  - Added SHA256SUMS checksum generation and version-tagged release artifact upload.
+
+

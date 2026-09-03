@@ -11,14 +11,31 @@ void main() {
   final lines = lcovFile.readAsLinesSync();
   int totalFound = 0;
   int totalHit = 0;
+  String currentFile = '';
+  int currentLf = 0;
+  int currentLh = 0;
+  final fileStats = <Map<String, dynamic>>[];
 
   for (final l in lines) {
-    if (l.startsWith('LF:')) {
-      totalFound += int.parse(l.substring(3).trim());
+    if (l.startsWith('SF:')) {
+      currentFile = l.substring(3).trim();
+    } else if (l.startsWith('LF:')) {
+      currentLf = int.parse(l.substring(3).trim());
+      totalFound += currentLf;
     } else if (l.startsWith('LH:')) {
-      totalHit += int.parse(l.substring(3).trim());
+      currentLh = int.parse(l.substring(3).trim());
+      totalHit += currentLh;
+      fileStats.add({
+        'file': currentFile,
+        'lf': currentLf,
+        'lh': currentLh,
+        'missed': currentLf - currentLh,
+        'pct': currentLf > 0 ? (currentLh / currentLf) * 100 : 100.0,
+      });
     }
   }
+
+  fileStats.sort((a, b) => (b['missed'] as int).compareTo(a['missed'] as int));
 
   final percent = totalFound > 0 ? (totalHit / totalFound) * 100 : 0.0;
   // ignore: avoid_print
@@ -29,6 +46,13 @@ void main() {
   print('Lines Hit:   $totalHit');
   // ignore: avoid_print
   print('Coverage:    ${percent.toStringAsFixed(2)}%');
+  // ignore: avoid_print
+  print('\n=== Lowest Covered Files (Top 10) ===');
+  for (final f in fileStats.take(10)) {
+    // ignore: avoid_print
+    print(
+        '${(f['pct'] as double).toStringAsFixed(1)}% (${f['lh']}/${f['lf']}) [missed ${f['missed']}]: ${f['file']}');
+  }
 
   final reportsDir = Directory('reports');
   if (!reportsDir.existsSync()) reportsDir.createSync(recursive: true);
@@ -38,7 +62,13 @@ void main() {
   "totalLines": $totalFound,
   "linesHit": $totalHit,
   "coveragePercentage": ${percent.toStringAsFixed(2)},
-  "status": "${percent >= 90.0 ? 'PASS' : 'WARNING'}"
+  "status": "${percent >= 90.0 ? 'PASS' : 'FAIL'}"
 }
 ''');
+
+  if (percent < 90.0) {
+    // ignore: avoid_print
+    print('\n[ERROR] Code coverage ${percent.toStringAsFixed(2)}% is below the mandatory 90.0% quality gate!');
+    exit(1);
+  }
 }

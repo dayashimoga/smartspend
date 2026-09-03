@@ -47,11 +47,26 @@ class MainActivity : FlutterFragmentActivity() {
                     val smsList = queryFinancialSms(limit)
                     result.success(smsList)
                 }
+                "getQueuedSms" -> {
+                    val queued = SmsReceiver.getQueuedMessages(this)
+                    result.success(queued)
+                }
                 else -> {
                     result.notImplemented()
                 }
             }
         }
+
+        io.flutter.plugin.common.EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.smartspend/sms_stream")
+            .setStreamHandler(object : io.flutter.plugin.common.EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: io.flutter.plugin.common.EventChannel.EventSink?) {
+                    SmsReceiver.eventSink = events
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    SmsReceiver.eventSink = null
+                }
+            })
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

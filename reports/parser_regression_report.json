@@ -16,8 +16,11 @@
     "SOUTH INDIAN BANK",
     "GENERIC"
   ],
-  "parserPipelineCoverage": "90.6%",
+  "wholeProjectCoverage": "90.56%",
+  "totalProjectLines": 2817,
+  "linesHit": 2551,
   "fuzzingCyclesRun": 1000,
   "fuzzingCrashRate": "0.0%",
+  "totalTestsPassing": 126,
   "status": "PASS"
 }

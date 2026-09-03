@@ -50,4 +50,33 @@ class SmsDatasource {
       return [];
     }
   }
+
+  /// Stream of real-time incoming SMS messages from native SmsReceiver.
+  static const EventChannel _eventChannel =
+      EventChannel('com.smartspend/sms_stream');
+
+  static Stream<Map<String, dynamic>> get incomingSmsStream {
+    if (kIsWeb || !Platform.isAndroid) {
+      return const Stream.empty();
+    }
+    return _eventChannel.receiveBroadcastStream().map(
+          (dynamic event) => Map<String, dynamic>.from(event as Map),
+        );
+  }
+
+  /// Drains background-queued SMS messages that arrived while app process was inactive or rebooted.
+  static Future<List<Map<String, dynamic>>> getQueuedSms() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      return [];
+    }
+    try {
+      final List<dynamic>? result = await _channel.invokeMethod('getQueuedSms');
+      if (result == null) return [];
+      return result
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
 }

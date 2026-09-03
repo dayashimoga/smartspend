@@ -7,7 +7,7 @@ import '../crypto/key_manager.dart';
 
 class DatabaseHelper {
   static const _dbName = 'smartspend_vault_v1.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 3;
 
   static DatabaseHelper? _instance;
   static Database? _staticDatabase;
@@ -143,6 +143,8 @@ class DatabaseHelper {
         is_excluded INTEGER NOT NULL DEFAULT 0,
         is_reconciled INTEGER NOT NULL DEFAULT 0,
         reconciled_with_id TEXT,
+        transfer_account_id TEXT,
+        reconciliation_notes TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (raw_sms_id) REFERENCES raw_sms(id) ON DELETE CASCADE
@@ -235,6 +237,8 @@ class DatabaseHelper {
         current_spend REAL NOT NULL,
         month INTEGER NOT NULL,
         year INTEGER NOT NULL,
+        notes TEXT,
+        is_recurring INTEGER NOT NULL DEFAULT 1,
         UNIQUE(category, month, year)
       );
     ''');
@@ -248,12 +252,22 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Migration logic for future versions
-    if (oldVersion < 2) {
-      // Example v2 migration hook
-      try {
-        await db.execute('ALTER TABLE budgets ADD COLUMN notes TEXT');
-      } catch (_) {}
+    for (int v = oldVersion + 1; v <= newVersion; v++) {
+      await db.transaction((txn) async {
+        switch (v) {
+          case 2:
+            await txn.execute('ALTER TABLE budgets ADD COLUMN notes TEXT');
+            await txn.execute(
+                'ALTER TABLE budgets ADD COLUMN is_recurring INTEGER NOT NULL DEFAULT 1');
+            break;
+          case 3:
+            await txn.execute(
+                'ALTER TABLE parsed_transactions ADD COLUMN transfer_account_id TEXT');
+            await txn.execute(
+                'ALTER TABLE parsed_transactions ADD COLUMN reconciliation_notes TEXT');
+            break;
+        }
+      });
     }
   }
 

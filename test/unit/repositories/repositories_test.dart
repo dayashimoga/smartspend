@@ -44,7 +44,8 @@ void main() {
 
       await acctRepo.upsertAccount(acct);
 
-      final fetched = await acctRepo.getAccountByBankAndLast4(Bank.hdfc, '1111');
+      final fetched =
+          await acctRepo.getAccountByBankAndLast4(Bank.hdfc, '1111');
       expect(fetched, isNotNull);
       expect(fetched?.currentBalance, equals(75000.0));
 
@@ -54,7 +55,8 @@ void main() {
       // Upsert updated balance
       final updatedAcct = acct.copyWith(currentBalance: 80000.0);
       await acctRepo.upsertAccount(updatedAcct);
-      final updated = await acctRepo.getAccountByBankAndLast4(Bank.hdfc, '1111');
+      final updated =
+          await acctRepo.getAccountByBankAndLast4(Bank.hdfc, '1111');
       expect(updated?.currentBalance, equals(80000.0));
     });
 
@@ -117,7 +119,8 @@ void main() {
 
       await fastagRepo.upsertFastag(fastag);
 
-      final fetched = await fastagRepo.getFastagByVehicleOrId('DL01XY9999', null);
+      final fetched =
+          await fastagRepo.getFastagByVehicleOrId('DL01XY9999', null);
       expect(fetched, isNotNull);
       expect(fetched?.latestWalletBalance, equals(1200.0));
 

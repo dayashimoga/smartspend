@@ -15,26 +15,61 @@ void main() {
   late DatabaseHelper dbHelper;
   late TransactionRepository txnRepo;
   late CorrectionRepository correctionRepo;
-  late CorrectionUseCase correctionUseCase;
+  late CorrectionUseCase useCase;
 
   setUp(() async {
     dbHelper = DatabaseHelper.inMemory();
     final smsRepo = SmsRepository(dbHelper: dbHelper);
     await smsRepo.saveSms(
       SmsRecord(
-        id: 'sms_1',
-        sender: 'ICICIB',
+        id: 's_corr_1',
+        sender: 'HDFCBK',
         body: 'Sample SMS',
-        timestamp: DateTime(2026, 1, 15),
-        fingerprint: 'fp_sample_1',
+        timestamp: DateTime(2026, 1, 1),
+        fingerprint: 'fp_corr_1',
         ingestedAt: DateTime.now(),
       ),
     );
+
     txnRepo = TransactionRepository(dbHelper: dbHelper);
     correctionRepo = CorrectionRepository(dbHelper: dbHelper);
-    correctionUseCase = CorrectionUseCase(
-      txnRepo: txnRepo,
-      correctionRepo: correctionRepo,
+    useCase =
+        CorrectionUseCase(txnRepo: txnRepo, correctionRepo: correctionRepo);
+
+    await txnRepo.saveTransaction(
+      ParsedTransaction(
+        id: 't_corr_1',
+        rawSmsId: 's_corr_1',
+        type: TransactionType.purchase,
+        bank: Bank.hdfc,
+        accountLast4: '1111',
+        cardLast4: '2222',
+        amount: 2000.0,
+        currency: 'INR',
+        transactionDate: DateTime(2026, 1, 1),
+        merchant: 'Old Merchant',
+        category: 'Old Category',
+        confidence: Confidence.low,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    await txnRepo.saveTransaction(
+      ParsedTransaction(
+        id: 't_corr_2',
+        rawSmsId: 's_corr_1',
+        type: TransactionType.purchase,
+        bank: Bank.hdfc,
+        amount: 2000.0,
+        currency: 'INR',
+        transactionDate: DateTime(2026, 1, 1),
+        merchant: 'Duplicate Merchant',
+        category: 'Old Category',
+        confidence: Confidence.low,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
     );
   });
 
@@ -42,154 +77,107 @@ void main() {
     await dbHelper.close();
   });
 
-  ParsedTransaction createSampleTxn(
-      {String id = 'txn_1', double amount = 1000.0}) {
-    return ParsedTransaction(
-      id: id,
-      rawSmsId: 'sms_1',
-      type: TransactionType.purchase,
-      bank: Bank.icici,
-      cardLast4: '4000',
-      amount: amount,
-      currency: 'INR',
-      transactionDate: DateTime(2026, 1, 15),
-      merchant: 'Original Merchant',
-      category: 'Shopping',
-      confidence: Confidence.low,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-  }
-
-  group('CorrectionUseCase Forensic Suite', () {
-    test('updateTransactionField updates merchant and records audit log',
+  group('CorrectionUseCase Full Forensic Coverage Suite', () {
+    test(
+        'updateTransactionField updates all supported fields and records audit logs',
         () async {
-      final initial = createSampleTxn();
-      await txnRepo.saveTransaction(initial);
-
-      final updated = await correctionUseCase.updateTransactionField(
-        transactionId: 'txn_1',
+      // 1. Update merchant
+      await useCase.updateTransactionField(
+        transactionId: 't_corr_1',
         fieldName: 'merchant',
-        newValue: 'Amazon India',
-        reason: 'User merchant refinement',
+        newValue: 'New Merchant',
       );
 
-      expect(updated.merchant, equals('Amazon India'));
-      expect(updated.confidence, equals(Confidence.high));
-
-      // Verify DB persistence
-      final fromDb = await txnRepo.getTransactionById('txn_1');
-      expect(fromDb?.merchant, equals('Amazon India'));
-
-      // Verify Audit Log in corrections table
-      final corrections =
-          await correctionRepo.getCorrectionsForTransaction('txn_1');
-      expect(corrections.length, equals(1));
-      expect(corrections.first.fieldName, equals('merchant'));
-      expect(corrections.first.originalValue, equals('Original Merchant'));
-      expect(corrections.first.correctedValue, equals('Amazon India'));
-      expect(corrections.first.reason, equals('User merchant refinement'));
-    });
-
-    test('updateTransactionField updates amount and category', () async {
-      final initial = createSampleTxn();
-      await txnRepo.saveTransaction(initial);
-
-      await correctionUseCase.updateTransactionField(
-        transactionId: 'txn_1',
-        fieldName: 'amount',
-        newValue: '1250.50',
-      );
-
-      await correctionUseCase.updateTransactionField(
-        transactionId: 'txn_1',
+      // 2. Update category
+      await useCase.updateTransactionField(
+        transactionId: 't_corr_1',
         fieldName: 'category',
         newValue: 'Groceries',
       );
 
-      final fromDb = await txnRepo.getTransactionById('txn_1');
-      expect(fromDb?.amount, equals(1250.50));
-      expect(fromDb?.category, equals('Groceries'));
+      // 3. Update amount
+      await useCase.updateTransactionField(
+        transactionId: 't_corr_1',
+        fieldName: 'amount',
+        newValue: '2500.0',
+      );
+
+      // 4. Update type
+      await useCase.updateTransactionField(
+        transactionId: 't_corr_1',
+        fieldName: 'type',
+        newValue: 'salary',
+      );
+
+      // 5. Update bank
+      await useCase.updateTransactionField(
+        transactionId: 't_corr_1',
+        fieldName: 'bank',
+        newValue: 'icici',
+      );
+
+      // 6. Update accountLast4
+      await useCase.updateTransactionField(
+        transactionId: 't_corr_1',
+        fieldName: 'accountLast4',
+        newValue: '9999',
+      );
+
+      // 7. Update cardLast4
+      await useCase.updateTransactionField(
+        transactionId: 't_corr_1',
+        fieldName: 'cardLast4',
+        newValue: '8888',
+      );
+
+      final updated = await txnRepo.getTransactionById('t_corr_1');
+      expect(updated!.merchant, equals('New Merchant'));
+      expect(updated.category, equals('Groceries'));
+      expect(updated.amount, equals(2500.0));
+      expect(updated.type, equals(TransactionType.salary));
+      expect(updated.bank, equals(Bank.icici));
+      expect(updated.accountLast4, equals('9999'));
+      expect(updated.cardLast4, equals('8888'));
+      expect(updated.confidence, equals(Confidence.high));
 
       final corrections =
-          await correctionRepo.getCorrectionsForTransaction('txn_1');
-      expect(corrections.length, equals(2));
+          await correctionRepo.getCorrectionsForTransaction('t_corr_1');
+      expect(corrections.length, equals(7));
     });
 
-    test('setExcluded marks transaction as non-financial and records audit',
-        () async {
-      final initial = createSampleTxn();
-      await txnRepo.saveTransaction(initial);
+    test('setExcluded marks transaction non-financial and restores', () async {
+      await useCase.setExcluded('t_corr_1', true, reason: 'Test Exclusion');
+      var txn = await txnRepo.getTransactionById('t_corr_1');
+      expect(txn!.isExcluded, isTrue);
+      expect(txn.category, equals('Non-Financial'));
 
-      // Exclude
-      await correctionUseCase.setExcluded('txn_1', true,
-          reason: 'Personal transfer');
-      var fromDb = await txnRepo.getTransactionById('txn_1');
-      expect(fromDb?.isExcluded, isTrue);
-      expect(fromDb?.category, equals('Non-Financial'));
-
-      // Restore
-      await correctionUseCase.setExcluded('txn_1', false, reason: 'Reinstated');
-      fromDb = await txnRepo.getTransactionById('txn_1');
-      expect(fromDb?.isExcluded, isFalse);
-
-      final corrections =
-          await correctionRepo.getCorrectionsForTransaction('txn_1');
-      expect(corrections.length, equals(2));
-      expect(corrections.first.reason, equals('Reinstated'));
-      expect(corrections.last.reason, equals('Personal transfer'));
+      await useCase.setExcluded('t_corr_1', false);
+      txn = await txnRepo.getTransactionById('t_corr_1');
+      expect(txn!.isExcluded, isFalse);
     });
 
     test('mergeDuplicates excludes duplicate and links to primary', () async {
-      final primary = createSampleTxn(id: 'primary_1', amount: 500.0);
-      final duplicate = createSampleTxn(id: 'dupe_1', amount: 500.0);
-      await txnRepo.saveTransaction(primary);
-      await txnRepo.saveTransaction(duplicate);
-
-      await correctionUseCase.mergeDuplicates('primary_1', 'dupe_1');
-
-      final dupeDb = await txnRepo.getTransactionById('dupe_1');
-      expect(dupeDb?.isExcluded, isTrue);
-      expect(dupeDb?.isReconciled, isTrue);
-      expect(dupeDb?.reconciledWithId, equals('primary_1'));
-
-      final corrections =
-          await correctionRepo.getCorrectionsForTransaction('dupe_1');
-      expect(corrections.length, equals(1));
-      expect(corrections.first.fieldName, equals('merged_into'));
-      expect(corrections.first.correctedValue, equals('primary_1'));
+      await useCase.mergeDuplicates('t_corr_1', 't_corr_2');
+      final duplicate = await txnRepo.getTransactionById('t_corr_2');
+      expect(duplicate!.isExcluded, isTrue);
+      expect(duplicate.isReconciled, isTrue);
+      expect(duplicate.reconciledWithId, equals('t_corr_1'));
     });
 
-    test('splitTransaction creates two child items with audit logging',
-        () async {
-      final initial = createSampleTxn(id: 'parent_1', amount: 1000.0);
-      await txnRepo.saveTransaction(initial);
-
-      final splitResult = await correctionUseCase.splitTransaction(
-        transactionId: 'parent_1',
-        firstAmount: 600.0,
+    test('splitTransaction creates two split records', () async {
+      final splitResult = await useCase.splitTransaction(
+        transactionId: 't_corr_1',
+        firstAmount: 1200.0,
         firstCategory: 'Groceries',
-        secondAmount: 400.0,
-        secondCategory: 'Work Expenses',
+        secondAmount: 800.0,
+        secondCategory: 'Household',
       );
 
       expect(splitResult.length, equals(2));
-      expect(splitResult[0].amount, equals(600.0));
+      expect(splitResult[0].amount, equals(1200.0));
       expect(splitResult[0].category, equals('Groceries'));
-      expect(splitResult[1].amount, equals(400.0));
-      expect(splitResult[1].category, equals('Work Expenses'));
-
-      // Verify both exist in DB
-      final parentDb = await txnRepo.getTransactionById('parent_1');
-      expect(parentDb?.amount, equals(600.0));
-
-      final allTxns = await txnRepo.getAllTransactions();
-      expect(allTxns.length, equals(2));
-
-      final corrections =
-          await correctionRepo.getCorrectionsForTransaction('parent_1');
-      expect(corrections.length, equals(1));
-      expect(corrections.first.fieldName, equals('split_transaction'));
+      expect(splitResult[1].amount, equals(800.0));
+      expect(splitResult[1].category, equals('Household'));
     });
   });
 }

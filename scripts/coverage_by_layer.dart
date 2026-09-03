@@ -11,10 +11,12 @@ void main() {
       currentFile = line.substring(3).replaceAll('\\', '/');
     } else if (line.startsWith('LF:')) {
       final layer = _getLayer(currentFile);
-      layerLinesFound[layer] = (layerLinesFound[layer] ?? 0) + int.parse(line.substring(3));
+      layerLinesFound[layer] =
+          (layerLinesFound[layer] ?? 0) + int.parse(line.substring(3));
     } else if (line.startsWith('LH:')) {
       final layer = _getLayer(currentFile);
-      layerLinesHit[layer] = (layerLinesHit[layer] ?? 0) + int.parse(line.substring(3));
+      layerLinesHit[layer] =
+          (layerLinesHit[layer] ?? 0) + int.parse(line.substring(3));
     }
   }
 
@@ -25,7 +27,8 @@ void main() {
     final hit = layerLinesHit[layer] ?? 0;
     final pct = (hit / found) * 100;
     // ignore: avoid_print
-    print('${layer.padRight(25)}: ${pct.toStringAsFixed(1)}% ($hit / $found lines)');
+    print(
+        '${layer.padRight(25)}: ${pct.toStringAsFixed(1)}% ($hit / $found lines)');
   }
 }
 
