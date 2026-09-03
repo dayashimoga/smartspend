@@ -5,10 +5,12 @@ import '../../domain/entities/financial_summary.dart';
 
 class SummaryCards extends StatelessWidget {
   final FinancialSummary summary;
+  final bool isUpdating;
 
   const SummaryCards({
     super.key,
     required this.summary,
+    this.isUpdating = false,
   });
 
   @override
@@ -39,17 +41,41 @@ class SummaryCards extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Net Cashflow',
-                    style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500),
+                  Row(
+                    children: [
+                      const Text(
+                        'Net Cashflow',
+                        style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500),
+                      ),
+                      if (isUpdating) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Updating...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  Icon(Icons.lock_outline, color: Colors.white70, size: 16),
+                  const Icon(Icons.lock_outline,
+                      color: Colors.white70, size: 16),
                 ],
               ),
               const SizedBox(height: 8),
@@ -157,16 +183,43 @@ class SummaryCards extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          AmountParser.format(summary.totalAccountBalance,
-                              currency: summary.currency),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.lightTextPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              summary.totalAccountBalance != null
+                                  ? AmountParser.format(
+                                      summary.totalAccountBalance!,
+                                      currency: summary.currency)
+                                  : 'Unavailable',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.lightTextPrimary,
+                              ),
+                            ),
+                            if (isUpdating) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Updating',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -204,19 +257,43 @@ class SummaryCards extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          AmountParser.format(
-                              summary.totalCardOutstanding > 0
-                                  ? summary.totalCardOutstanding
-                                  : summary.totalCardSpent,
-                              currency: summary.currency),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.lightTextPrimary,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              AmountParser.format(
+                                  summary.totalCardOutstanding > 0
+                                      ? summary.totalCardOutstanding
+                                      : summary.totalCardSpent,
+                                  currency: summary.currency),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.lightTextPrimary,
+                              ),
+                            ),
+                            if (isUpdating) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Updating',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

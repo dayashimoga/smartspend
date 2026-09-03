@@ -58,6 +58,7 @@ void main() {
       expect(find.text('Primary Currency'), findsOneWidget);
       expect(find.text('Security'), findsOneWidget);
       expect(find.text('Biometric App Lock'), findsOneWidget);
+      expect(find.text('Data Quality & Ingestion History'), findsOneWidget);
       expect(find.text('Load Golden Sample SMS'), findsOneWidget);
       expect(find.text('Export Data to JSON'), findsOneWidget);
       expect(find.text('Export Data to CSV'), findsOneWidget);

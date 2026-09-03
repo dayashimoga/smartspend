@@ -4,7 +4,7 @@ class FinancialSummary extends Equatable {
   final double totalIncome;
   final double totalExpense;
   final double netCashFlow;
-  final double totalAccountBalance;
+  final double? totalAccountBalance;
   final double totalCardOutstanding;
   final double totalCardSpent;
   final double totalAvailableCredit;
@@ -17,7 +17,7 @@ class FinancialSummary extends Equatable {
     required this.totalIncome,
     required this.totalExpense,
     required this.netCashFlow,
-    required this.totalAccountBalance,
+    this.totalAccountBalance,
     required this.totalCardOutstanding,
     this.totalCardSpent = 0.0,
     required this.totalAvailableCredit,
@@ -26,6 +26,9 @@ class FinancialSummary extends Equatable {
     required this.needsReviewCount,
     this.currency = 'INR',
   });
+
+  /// Whether a verified, reliable bank balance exists for the selected period
+  bool get isBalanceReliable => totalAccountBalance != null;
 
   /// Returns null if insufficient credit limit data exists to prevent misleading false 0%.
   double? get cardUtilizationPercentage {
@@ -41,7 +44,7 @@ class FinancialSummary extends Equatable {
       totalIncome: 0.0,
       totalExpense: 0.0,
       netCashFlow: 0.0,
-      totalAccountBalance: 0.0,
+      totalAccountBalance: null,
       totalCardOutstanding: 0.0,
       totalCardSpent: 0.0,
       totalAvailableCredit: 0.0,

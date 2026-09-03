@@ -189,10 +189,46 @@ class TransactionRepository implements ITransactionRepository {
       }
     }
 
-    // Accounts balance sum
-    final acctRes =
-        await db.rawQuery('SELECT SUM(current_balance) as total FROM accounts');
-    final totalAcctBal = (acctRes.first['total'] as num?)?.toDouble() ?? 0.0;
+    // Accounts balance sum: use latest known reliable balance <= endDate
+    double? totalAcctBal;
+    final accts = await db.query('accounts');
+    if (accts.isNotEmpty) {
+      double sum = 0.0;
+      bool anyReliable = false;
+      final asOfMs = endDate?.millisecondsSinceEpoch;
+
+      for (final a in accts) {
+        final bankName = a['bank'] as String;
+        final last4 = a['last4'] as String;
+        final currentBal = (a['current_balance'] as num?)?.toDouble() ?? 0.0;
+        final lastUpd = a['last_updated'] as int;
+
+        if (asOfMs != null) {
+          final txRes = await db.query(
+            'parsed_transactions',
+            where:
+                'bank = ? AND account_last4 = ? AND balance IS NOT NULL AND transaction_date <= ?',
+            whereArgs: [bankName, last4, asOfMs],
+            orderBy: 'transaction_date DESC',
+            limit: 1,
+          );
+          if (txRes.isNotEmpty) {
+            sum += (txRes.first['balance'] as num).toDouble();
+            anyReliable = true;
+          } else if (lastUpd <= asOfMs) {
+            sum += currentBal;
+            anyReliable = true;
+          }
+        } else {
+          sum += currentBal;
+          anyReliable = true;
+        }
+      }
+
+      if (anyReliable) {
+        totalAcctBal = sum;
+      }
+    }
 
     // Cards limits & outstanding
     final cardRes = await db.rawQuery(

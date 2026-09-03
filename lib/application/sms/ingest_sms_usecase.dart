@@ -165,6 +165,8 @@ class IngestSmsUseCase {
             currentBalance: newBalance,
             currency: txn.currency,
             lastUpdated: txn.transactionDate,
+            isBalanceReliable:
+                txn.balance != null || (existing?.isBalanceReliable ?? false),
           ),
         );
       }

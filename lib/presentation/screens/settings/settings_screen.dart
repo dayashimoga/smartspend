@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/crypto/key_manager.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/app_providers.dart';
@@ -134,6 +135,16 @@ class SettingsScreen extends ConsumerWidget {
           const Text('Data & Tools',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
+
+          ListTile(
+            leading:
+                const Icon(Icons.analytics_outlined, color: AppColors.primary),
+            title: const Text('Data Quality & Ingestion History'),
+            subtitle: const Text(
+                'Parser health, sync diagnostics, and historical runs'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/data-quality'),
+          ),
 
           ListTile(
             leading:

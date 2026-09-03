@@ -9,6 +9,7 @@ class Account extends Equatable {
   final double currentBalance;
   final String currency;
   final DateTime lastUpdated;
+  final bool isBalanceReliable;
 
   const Account({
     required this.id,
@@ -18,6 +19,7 @@ class Account extends Equatable {
     required this.currentBalance,
     this.currency = 'INR',
     required this.lastUpdated,
+    this.isBalanceReliable = true,
   });
 
   String get displayName => '${bank.displayName} (•••• $last4)';
@@ -30,6 +32,7 @@ class Account extends Equatable {
     double? currentBalance,
     String? currency,
     DateTime? lastUpdated,
+    bool? isBalanceReliable,
   }) {
     return Account(
       id: id ?? this.id,
@@ -39,6 +42,7 @@ class Account extends Equatable {
       currentBalance: currentBalance ?? this.currentBalance,
       currency: currency ?? this.currency,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      isBalanceReliable: isBalanceReliable ?? this.isBalanceReliable,
     );
   }
 
@@ -67,10 +71,19 @@ class Account extends Equatable {
       currency: (map['currency'] as String?) ?? 'INR',
       lastUpdated:
           DateTime.fromMillisecondsSinceEpoch(map['last_updated'] as int),
+      isBalanceReliable: (map['is_balance_reliable'] as bool?) ?? true,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [id, bank, last4, accountType, currentBalance, currency, lastUpdated];
+  List<Object?> get props => [
+        id,
+        bank,
+        last4,
+        accountType,
+        currentBalance,
+        currency,
+        lastUpdated,
+        isBalanceReliable
+      ];
 }

@@ -62,9 +62,17 @@ class AccountRepository implements IAccountRepository {
             (txRes.first['balance'] as num?)?.toDouble() ?? acct.currentBalance;
         final date = DateTime.fromMillisecondsSinceEpoch(
             txRes.first['transaction_date'] as int);
-        result.add(acct.copyWith(currentBalance: bal, lastUpdated: date));
+        result.add(acct.copyWith(
+          currentBalance: bal,
+          lastUpdated: date,
+          isBalanceReliable: true,
+        ));
       } else {
-        result.add(acct);
+        if (acct.lastUpdated.millisecondsSinceEpoch <= asOfMs) {
+          result.add(acct.copyWith(isBalanceReliable: true));
+        } else {
+          result.add(acct.copyWith(isBalanceReliable: false));
+        }
       }
     }
     return result;

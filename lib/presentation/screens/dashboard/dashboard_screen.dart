@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/datasources/sms_datasource.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/ingestion_progress_banner.dart';
 import '../../widgets/summary_cards.dart';
 import '../../widgets/time_period_selector.dart';
 import '../../widgets/transaction_tile.dart';
@@ -19,6 +20,8 @@ class DashboardScreen extends ConsumerWidget {
     final txnsAsync = ref.watch(filteredTransactionsProvider);
     final billsAsync = ref.watch(filteredBillsProvider);
     final isSyncing = ref.watch(isSyncingProvider);
+    final ingestionProgress = ref.watch(ingestionControllerProvider);
+    final ingestionNotifier = ref.read(ingestionControllerProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -40,7 +43,7 @@ class DashboardScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            icon: isSyncing
+            icon: isSyncing || ingestionProgress.isBusy
                 ? const SizedBox(
                     width: 20,
                     height: 20,
@@ -49,46 +52,21 @@ class DashboardScreen extends ConsumerWidget {
                   )
                 : const Icon(Icons.sync),
             tooltip: 'Sync SMS',
-            onPressed: isSyncing
+            onPressed: isSyncing || ingestionProgress.isBusy
                 ? null
                 : () async {
-                    ref.read(isSyncingProvider.notifier).state = true;
                     try {
                       final hasPerm = await SmsDatasource.hasPermissions();
                       if (!hasPerm) {
                         await SmsDatasource.requestPermissions();
                       }
-                      final messages = await SmsDatasource.readInboxSms();
-                      if (messages.isNotEmpty) {
-                        final useCase = ref.read(ingestSmsUseCaseProvider);
-                        await useCase.execute(messages);
-                      }
-                      // Refresh providers
-                      ref.invalidate(financialSummaryProvider);
-                      ref.invalidate(filteredFinancialSummaryProvider);
-                      ref.invalidate(recentTransactionsProvider);
-                      ref.invalidate(filteredTransactionsProvider);
-                      ref.invalidate(allTransactionsProvider);
-                      ref.invalidate(accountsProvider);
-                      ref.invalidate(cardsProvider);
-                      ref.invalidate(billsProvider);
-                      ref.invalidate(filteredBillsProvider);
-                      ref.invalidate(needsReviewTransactionsProvider);
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Sync completed successfully')),
-                        );
-                      }
+                      await ingestionNotifier.startSync();
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Sync notice: $e')),
                         );
                       }
-                    } finally {
-                      ref.read(isSyncingProvider.notifier).state = false;
                     }
                   },
           ),
@@ -109,6 +87,16 @@ class DashboardScreen extends ConsumerWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            // Non-blocking Ingestion Progress Banner
+            IngestionProgressBanner(
+              progress: ingestionProgress,
+              onPause: ingestionNotifier.pause,
+              onResume: ingestionNotifier.resume,
+              onCancel: ingestionNotifier.cancel,
+              onRetry: ingestionNotifier.retry,
+              onDismiss: ingestionNotifier.dismiss,
+            ),
+
             // Time Period Selector
             TimePeriodSelector(
               period: period,
@@ -121,7 +109,10 @@ class DashboardScreen extends ConsumerWidget {
             summaryAsync.when(
               data: (summary) => Column(
                 children: [
-                  SummaryCards(summary: summary),
+                  SummaryCards(
+                    summary: summary,
+                    isUpdating: ingestionProgress.isBusy || isSyncing,
+                  ),
 
                   // Needs Review alert banner if applicable
                   if (summary.needsReviewCount > 0)

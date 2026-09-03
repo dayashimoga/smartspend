@@ -149,12 +149,17 @@ class AccountsScreen extends ConsumerWidget {
                                               color: Colors.grey)),
                                       const SizedBox(height: 2),
                                       Text(
-                                        AmountParser.format(acct.currentBalance,
-                                            currency: acct.currency),
-                                        style: const TextStyle(
+                                        acct.isBalanceReliable
+                                            ? AmountParser.format(
+                                                acct.currentBalance,
+                                                currency: acct.currency)
+                                            : 'Unavailable',
+                                        style: TextStyle(
                                             fontWeight: FontWeight.w700,
                                             fontSize: 16,
-                                            color: AppColors.income),
+                                            color: acct.isBalanceReliable
+                                                ? AppColors.income
+                                                : Colors.grey),
                                       ),
                                     ],
                                   ),

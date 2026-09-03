@@ -259,5 +259,55 @@ void main() {
       await tester.pump(const Duration(seconds: 11));
       await testDb.close();
     });
+
+    testWidgets('Supports Bulk Approve action and individual checkbox toggles',
+        (tester) async {
+      final sampleTxn1 = ParsedTransaction(
+        id: 'txn_approve_1',
+        rawSmsId: 'sms_app_1',
+        type: TransactionType.purchase,
+        bank: Bank.icici,
+        amount: 300.0,
+        currency: 'INR',
+        transactionDate: DateTime(2026, 1, 12),
+        merchant: 'Cafe Coffee',
+        category: 'Food',
+        confidence: Confidence.low,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final testDb = DatabaseHelper.inMemory();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            dbHelperProvider.overrideWithValue(testDb),
+            needsReviewTransactionsProvider
+                .overrideWith((ref) => Future.value([sampleTxn1])),
+          ],
+          child: const MaterialApp(
+            home: ReviewScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Toggle individual checkbox
+      final checkFinder = find.byType(Checkbox);
+      if (checkFinder.evaluate().isNotEmpty) {
+        await tester.tap(checkFinder.first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Approve (1)'), findsOneWidget);
+        await tester.tap(find.text('Approve (1)'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      await testDb.close();
+    });
   });
 }

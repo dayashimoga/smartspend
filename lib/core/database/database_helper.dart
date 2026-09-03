@@ -7,7 +7,7 @@ import '../crypto/key_manager.dart';
 
 class DatabaseHelper {
   static const _dbName = 'smartspend_vault_v1.db';
-  static const _dbVersion = 5;
+  static const _dbVersion = 6;
 
   static DatabaseHelper? _instance;
   static Database? _staticDatabase;
@@ -251,6 +251,55 @@ class DatabaseHelper {
         UNIQUE(category, month, year)
       );
     ''');
+
+    await db.execute('''
+      CREATE TABLE ingestion_checkpoint (
+        id TEXT PRIMARY KEY,
+        last_sms_id TEXT,
+        last_timestamp INTEGER NOT NULL DEFAULT 0,
+        last_fingerprint TEXT,
+        parser_version TEXT NOT NULL,
+        batch_offset INTEGER NOT NULL DEFAULT 0,
+        stage TEXT NOT NULL DEFAULT 'idle',
+        total_count INTEGER,
+        scanned_count INTEGER NOT NULL DEFAULT 0,
+        transactions_count INTEGER NOT NULL DEFAULT 0,
+        bills_count INTEGER NOT NULL DEFAULT 0,
+        accounts_count INTEGER NOT NULL DEFAULT 0,
+        balances_count INTEGER NOT NULL DEFAULT 0,
+        financial_count INTEGER NOT NULL DEFAULT 0,
+        duplicates_count INTEGER NOT NULL DEFAULT 0,
+        ignored_count INTEGER NOT NULL DEFAULT 0,
+        review_count INTEGER NOT NULL DEFAULT 0,
+        failed_count INTEGER NOT NULL DEFAULT 0,
+        last_updated INTEGER NOT NULL,
+        is_completed INTEGER NOT NULL DEFAULT 0
+      );
+    ''');
+
+    await db.execute('''
+      CREATE TABLE ingestion_history (
+        id TEXT PRIMARY KEY,
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        status TEXT NOT NULL,
+        total_scanned INTEGER NOT NULL,
+        financial_count INTEGER NOT NULL,
+        transactions_count INTEGER NOT NULL,
+        bills_count INTEGER NOT NULL,
+        balances_count INTEGER NOT NULL,
+        duplicates_count INTEGER NOT NULL,
+        ignored_count INTEGER NOT NULL,
+        review_count INTEGER NOT NULL,
+        failed_count INTEGER NOT NULL,
+        parser_version TEXT NOT NULL,
+        error_message TEXT
+      );
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_ingestion_history_started ON ingestion_history(started_at);
+    ''');
   }
 
   Future<void> close() async {
@@ -296,6 +345,54 @@ class DatabaseHelper {
             await txn.execute('ALTER TABLE bills ADD COLUMN biller_name TEXT');
             await txn
                 .execute('ALTER TABLE bills ADD COLUMN account_number TEXT');
+            break;
+          case 6:
+            await txn.execute('''
+              CREATE TABLE IF NOT EXISTS ingestion_checkpoint (
+                id TEXT PRIMARY KEY,
+                last_sms_id TEXT,
+                last_timestamp INTEGER NOT NULL DEFAULT 0,
+                last_fingerprint TEXT,
+                parser_version TEXT NOT NULL,
+                batch_offset INTEGER NOT NULL DEFAULT 0,
+                stage TEXT NOT NULL DEFAULT 'idle',
+                total_count INTEGER,
+                scanned_count INTEGER NOT NULL DEFAULT 0,
+                transactions_count INTEGER NOT NULL DEFAULT 0,
+                bills_count INTEGER NOT NULL DEFAULT 0,
+                accounts_count INTEGER NOT NULL DEFAULT 0,
+                balances_count INTEGER NOT NULL DEFAULT 0,
+                financial_count INTEGER NOT NULL DEFAULT 0,
+                duplicates_count INTEGER NOT NULL DEFAULT 0,
+                ignored_count INTEGER NOT NULL DEFAULT 0,
+                review_count INTEGER NOT NULL DEFAULT 0,
+                failed_count INTEGER NOT NULL DEFAULT 0,
+                last_updated INTEGER NOT NULL,
+                is_completed INTEGER NOT NULL DEFAULT 0
+              );
+            ''');
+            await txn.execute('''
+              CREATE TABLE IF NOT EXISTS ingestion_history (
+                id TEXT PRIMARY KEY,
+                started_at INTEGER NOT NULL,
+                completed_at INTEGER,
+                status TEXT NOT NULL,
+                total_scanned INTEGER NOT NULL,
+                financial_count INTEGER NOT NULL,
+                transactions_count INTEGER NOT NULL,
+                bills_count INTEGER NOT NULL,
+                balances_count INTEGER NOT NULL,
+                duplicates_count INTEGER NOT NULL,
+                ignored_count INTEGER NOT NULL,
+                review_count INTEGER NOT NULL,
+                failed_count INTEGER NOT NULL,
+                parser_version TEXT NOT NULL,
+                error_message TEXT
+              );
+            ''');
+            await txn.execute('''
+              CREATE INDEX IF NOT EXISTS idx_ingestion_history_started ON ingestion_history(started_at);
+            ''');
             break;
         }
       });

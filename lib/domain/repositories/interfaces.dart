@@ -5,6 +5,7 @@ import '../entities/correction.dart';
 import '../entities/credit_card.dart';
 import '../entities/fastag_record.dart';
 import '../entities/financial_summary.dart';
+import '../entities/ingestion_checkpoint.dart';
 import '../entities/parsed_transaction.dart';
 import '../entities/sms_record.dart';
 import '../enums/bank.dart';
@@ -82,4 +83,13 @@ abstract class ICorrectionRepository {
 abstract class IBudgetRepository {
   Future<void> upsertBudget(Budget budget);
   Future<List<Budget>> getBudgetsForMonth(int month, int year);
+}
+
+abstract class IIngestionRepository {
+  Future<IngestionCheckpoint?> getCheckpoint({String id = 'primary'});
+  Future<void> saveCheckpoint(IngestionCheckpoint checkpoint);
+  Future<void> clearCheckpoint({String id = 'primary'});
+  Future<void> saveHistory(IngestionHistoryRecord record);
+  Future<List<IngestionHistoryRecord>> getHistory({int limit = 50});
+  Future<void> deleteHistory(String id);
 }
