@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../../core/database/database_helper.dart';
 import '../../domain/entities/bill.dart';
+import '../../domain/enums/bank.dart';
 import '../../domain/repositories/interfaces.dart';
 
 class BillRepository implements IBillRepository {
@@ -23,6 +24,18 @@ class BillRepository implements IBillRepository {
   Future<List<Bill>> getAllBills() async {
     final db = await _dbHelper.database;
     final res = await db.query('bills', orderBy: 'due_date ASC');
+    return res.map((m) => Bill.fromMap(m)).toList();
+  }
+
+  @override
+  Future<List<Bill>> getBillsByCard(Bank bank, String cardLast4) async {
+    final db = await _dbHelper.database;
+    final res = await db.query(
+      'bills',
+      where: 'bank = ? AND card_last4 = ?',
+      whereArgs: [bank.name, cardLast4],
+      orderBy: 'due_date DESC',
+    );
     return res.map((m) => Bill.fromMap(m)).toList();
   }
 

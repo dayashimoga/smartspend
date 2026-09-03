@@ -205,7 +205,10 @@ class SummaryCards extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          AmountParser.format(summary.totalCardOutstanding,
+                          AmountParser.format(
+                              summary.totalCardOutstanding > 0
+                                  ? summary.totalCardOutstanding
+                                  : summary.totalCardSpent,
                               currency: summary.currency),
                           style: TextStyle(
                             fontSize: 16,

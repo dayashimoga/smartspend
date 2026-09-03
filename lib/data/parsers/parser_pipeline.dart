@@ -12,11 +12,14 @@ import 'bank_rules/hsbc_rules.dart';
 import 'bank_rules/icici_rules.dart';
 import 'bank_rules/idfc_first_rules.dart';
 import 'bank_rules/indusind_rules.dart';
+import 'bank_rules/kotak_rules.dart';
 import 'bank_rules/onecard_rules.dart';
+import 'bank_rules/rbl_rules.dart';
 import 'bank_rules/sbi_rules.dart';
 import 'bank_rules/ujjivan_rules.dart';
 import 'bank_rules/yes_bank_rules.dart';
 import 'institution_detector.dart';
+import 'merchant_normalizer.dart';
 import 'normalizer.dart';
 import 'validator.dart';
 
@@ -32,12 +35,14 @@ class ParserPipeline {
     IndusindRules(),
     UjjivanRules(),
     OnecardRules(),
+    RblRules(),
+    KotakRules(),
     FastagRules(),
     GenericRules(),
   ];
 
   /// Executes the full SMS parsing pipeline:
-  /// normalize -> detect institution -> classify & extract -> validate -> return.
+  /// normalize -> detect institution -> classify & extract -> validate -> normalize merchant -> return.
   ParsedTransaction parseSms({
     required String rawSmsId,
     required String sender,
@@ -61,6 +66,7 @@ class ParserPipeline {
         amount: 0.0,
         currency: 'INR',
         transactionDate: timestamp,
+        smsReceivedAt: timestamp,
         confidence: Confidence.unparsed,
         parserVersion: '1.0.0',
         category: lower.contains('otp') ? 'OTP' : 'Promotional',
@@ -124,6 +130,7 @@ class ParserPipeline {
       amount: 0.0,
       currency: 'INR',
       transactionDate: timestamp,
+      smsReceivedAt: timestamp,
       confidence: Confidence.unparsed,
       parserVersion: '1.0.0',
       category: 'Uncategorized',
@@ -132,6 +139,9 @@ class ParserPipeline {
     );
 
     // Stage 5: Validation
-    return Validator.validate(result);
+    final validated = Validator.validate(result);
+
+    // Stage 6: Merchant Normalization & Canonical Category Mapping
+    return MerchantNormalizer.normalize(validated);
   }
 }

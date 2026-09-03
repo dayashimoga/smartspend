@@ -18,6 +18,8 @@ class InstitutionDetector {
     if (s.contains('UJJIV')) return Bank.ujjivan;
     if (s.contains('ONECRD') || s.contains('ONECARD')) return Bank.onecard;
     if (s.contains('SIB') || s.contains('SOUTHI')) return Bank.sib;
+    if (s.contains('RBL')) return Bank.rbl;
+    if (s.contains('KOTAK')) return Bank.kotak;
 
     // 2. Check body content
     if (b.contains('HDFC BANK') || b.contains('HDFC')) return Bank.hdfc;
@@ -37,6 +39,12 @@ class InstitutionDetector {
     if (b.contains('UJJIVAN')) return Bank.ujjivan;
     if (b.contains('ONECARD')) return Bank.onecard;
     if (b.contains('SOUTH INDIAN BANK') || b.contains('SIB')) return Bank.sib;
+    if (b.contains('RBL BANK') || b.contains('RBL')) return Bank.rbl;
+    if (b.contains('KOTAK MAHINDRA') ||
+        b.contains('KOTAK BANK') ||
+        b.contains('KOTAK')) {
+      return Bank.kotak;
+    }
 
     return Bank.unknown;
   }

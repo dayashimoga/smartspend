@@ -8,6 +8,7 @@ import '../../domain/entities/fastag_record.dart';
 import '../../domain/entities/parsed_transaction.dart';
 import '../../domain/entities/sms_record.dart';
 import '../../domain/enums/bank.dart';
+import '../../domain/enums/confidence.dart';
 import '../../domain/enums/transaction_type.dart';
 import '../../domain/repositories/interfaces.dart';
 
@@ -143,38 +144,90 @@ class IngestSmsUseCase {
   }
 
   Future<void> _updateAssociatedEntities(ParsedTransaction txn) async {
+    // Prevent unparsed or excluded items from spawning phantom entities
+    if (txn.confidence == Confidence.unparsed || txn.isExcluded) return;
+
     // 1. Update Bank Account balance if applicable
     if (txn.accountLast4 != null && txn.bank != Bank.unknown) {
       final existing =
           await _acctRepo.getAccountByBankAndLast4(txn.bank, txn.accountLast4!);
       final newBalance = txn.balance ?? existing?.currentBalance ?? 0.0;
 
-      await _acctRepo.upsertAccount(
-        Account(
-          id: existing?.id ?? const Uuid().v4(),
-          bank: txn.bank,
-          last4: txn.accountLast4!,
-          accountType:
-              txn.type == TransactionType.salary ? 'Salary' : 'Savings',
-          currentBalance: newBalance,
-          currency: txn.currency,
-          lastUpdated: txn.transactionDate,
-        ),
-      );
+      // Only update if balance is actually provided or existing account exists
+      if (txn.balance != null || existing != null) {
+        await _acctRepo.upsertAccount(
+          Account(
+            id: existing?.id ?? const Uuid().v4(),
+            bank: txn.bank,
+            last4: txn.accountLast4!,
+            accountType:
+                txn.type == TransactionType.salary ? 'Salary' : 'Savings',
+            currentBalance: newBalance,
+            currency: txn.currency,
+            lastUpdated: txn.transactionDate,
+          ),
+        );
+      }
     }
 
     // 2. Update Credit Card if applicable
-    if (txn.cardLast4 != null && txn.bank != Bank.unknown) {
+    String? resolvedCardLast4 = txn.cardLast4;
+    if (resolvedCardLast4 == null && txn.bank != Bank.unknown) {
+      // Intelligent trail inference: If only one card exists for this bank, resolve to that card
+      final bankCards = await _cardRepo.getCardsByBank(txn.bank);
+      if (bankCards.isNotEmpty) {
+        resolvedCardLast4 = bankCards.first.last4;
+      }
+    }
+
+    if (resolvedCardLast4 != null && txn.bank != Bank.unknown) {
       final existing =
-          await _cardRepo.getCardByBankAndLast4(txn.bank, txn.cardLast4!);
+          await _cardRepo.getCardByBankAndLast4(txn.bank, resolvedCardLast4);
+
+      double? updatedOutstanding = txn.outstanding ?? existing?.outstanding;
+      double? updatedStatementDue = existing?.statementDue;
+      double? updatedCurrentDue = existing?.currentDue;
+      DateTime? updatedStatementDate = existing?.lastStatementDate;
+
+      if (txn.type == TransactionType.bill) {
+        updatedStatementDue = txn.billTotal ?? txn.amount;
+        updatedCurrentDue = txn.billMinimum ?? 0.0;
+        updatedStatementDate = txn.statementDate ?? txn.transactionDate;
+        updatedOutstanding = updatedStatementDue;
+      } else if (txn.type == TransactionType.billPayment) {
+        // Payment made: reduce statement due and outstanding
+        if (updatedStatementDue != null) {
+          updatedStatementDue =
+              (updatedStatementDue - txn.amount).clamp(0.0, double.infinity);
+        }
+        if (updatedOutstanding != null) {
+          updatedOutstanding =
+              (updatedOutstanding - txn.amount).clamp(0.0, double.infinity);
+        }
+        // Mark corresponding unpaid bills for this card as paid
+        final cardBills =
+            await _billRepo.getBillsByCard(txn.bank, resolvedCardLast4);
+        for (final b in cardBills) {
+          if (b.status == BillStatus.unpaid) {
+            await _billRepo.upsertBill(b.copyWith(
+              status: BillStatus.paid,
+              paymentTransactionId: txn.id,
+            ));
+          }
+        }
+      }
+
       await _cardRepo.upsertCard(
         CreditCard(
           id: existing?.id ?? const Uuid().v4(),
           bank: txn.bank,
-          last4: txn.cardLast4!,
+          last4: resolvedCardLast4,
           availableLimit: txn.availableLimit ?? existing?.availableLimit,
           totalLimit: existing?.totalLimit,
-          outstanding: txn.outstanding ?? existing?.outstanding,
+          outstanding: updatedOutstanding,
+          statementDue: updatedStatementDue,
+          currentDue: updatedCurrentDue,
+          lastStatementDate: updatedStatementDate,
           currency: txn.currency,
           lastUpdated: txn.transactionDate,
         ),

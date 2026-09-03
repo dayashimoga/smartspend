@@ -39,4 +39,16 @@ class CardRepository implements ICardRepository {
     if (res.isEmpty) return null;
     return CreditCard.fromMap(res.first);
   }
+
+  @override
+  Future<List<CreditCard>> getCardsByBank(Bank bank) async {
+    final db = await _dbHelper.database;
+    final res = await db.query(
+      'cards',
+      where: 'bank = ?',
+      whereArgs: [bank.name],
+      orderBy: 'last_updated DESC',
+    );
+    return res.map((m) => CreditCard.fromMap(m)).toList();
+  }
 }

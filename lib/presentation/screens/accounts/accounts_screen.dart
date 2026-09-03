@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/amount_parser.dart';
 import '../../providers/app_providers.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
+
+  String _formatDate(DateTime dt) {
+    return DateFormat('dd MMM yyyy, hh:mm a').format(dt);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -104,6 +109,16 @@ class AccountsScreen extends ConsumerWidget {
                                               ? AppColors.darkTextSecondary
                                               : AppColors.lightTextSecondary),
                                     ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'As on: ${_formatDate(acct.lastUpdated)}',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark
+                                              ? AppColors.darkTextMuted
+                                              : AppColors.lightTextMuted),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -172,6 +187,8 @@ class AccountsScreen extends ConsumerWidget {
                   itemCount: cards.length,
                   itemBuilder: (context, index) {
                     final card = cards[index];
+                    final utilization = card.utilizationPercentage;
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: Padding(
@@ -216,27 +233,55 @@ class AccountsScreen extends ConsumerWidget {
                                                   : AppColors
                                                       .lightTextSecondary),
                                         ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'As on: ${_formatDate(card.lastUpdated)}',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDark
+                                                  ? AppColors.darkTextMuted
+                                                  : AppColors.lightTextMuted),
+                                        ),
                                       ],
                                     ),
                                   ],
                                 ),
-                                if (card.outstanding != null)
+                                if (card.outstanding != null ||
+                                    card.statementDue != null)
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      const Text('Outstanding',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey)),
+                                      Text(
+                                        card.statementDue != null
+                                            ? 'Statement Due'
+                                            : 'Outstanding',
+                                        style: const TextStyle(
+                                            fontSize: 11, color: Colors.grey),
+                                      ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        AmountParser.format(card.outstanding!,
+                                        AmountParser.format(
+                                            card.statementDue ??
+                                                card.outstanding!,
                                             currency: card.currency),
                                         style: const TextStyle(
                                             fontWeight: FontWeight.w700,
                                             fontSize: 15,
                                             color: AppColors.expense),
                                       ),
+                                      if (card.currentDue != null &&
+                                          card.currentDue! > 0) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Min: ${AmountParser.format(card.currentDue!, currency: card.currency)}',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: isDark
+                                                  ? AppColors.darkTextMuted
+                                                  : AppColors.lightTextMuted),
+                                        ),
+                                      ],
                                     ],
                                   ),
                               ],
@@ -248,38 +293,44 @@ class AccountsScreen extends ConsumerWidget {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Available Limit: ${AmountParser.format(card.availableLimit!, currency: card.currency)}',
+                                    'Available: ${AmountParser.format(card.availableLimit!, currency: card.currency)}',
                                     style: TextStyle(
                                         fontSize: 12,
+                                        fontWeight: FontWeight.w500,
                                         color: isDark
                                             ? AppColors.darkTextSecondary
                                             : AppColors.lightTextSecondary),
                                   ),
                                   Text(
-                                    '${card.utilizationPercentage.toStringAsFixed(1)}% Used',
+                                    utilization != null
+                                        ? '${utilization.toStringAsFixed(1)}% Used'
+                                        : 'Limit: Active',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: card.utilizationPercentage > 30
-                                          ? AppColors.warning
-                                          : AppColors.income,
+                                      color: utilization == null
+                                          ? AppColors.primary
+                                          : (utilization > 30
+                                              ? AppColors.warning
+                                              : AppColors.income),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              LinearProgressIndicator(
-                                value: (card.utilizationPercentage / 100.0)
-                                    .clamp(0.0, 1.0),
-                                backgroundColor: isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder,
-                                color: card.utilizationPercentage > 30
-                                    ? AppColors.warning
-                                    : AppColors.primary,
-                                minHeight: 6,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
+                              if (utilization != null) ...[
+                                const SizedBox(height: 6),
+                                LinearProgressIndicator(
+                                  value: (utilization / 100.0).clamp(0.0, 1.0),
+                                  backgroundColor: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder,
+                                  color: utilization > 30
+                                      ? AppColors.warning
+                                      : AppColors.primary,
+                                  minHeight: 6,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ],
                             ],
                           ],
                         ),

@@ -7,7 +7,7 @@ import '../crypto/key_manager.dart';
 
 class DatabaseHelper {
   static const _dbName = 'smartspend_vault_v1.db';
-  static const _dbVersion = 3;
+  static const _dbVersion = 4;
 
   static DatabaseHelper? _instance;
   static Database? _staticDatabase;
@@ -145,6 +145,8 @@ class DatabaseHelper {
         reconciled_with_id TEXT,
         transfer_account_id TEXT,
         reconciliation_notes TEXT,
+        sms_received_at INTEGER,
+        statement_date INTEGER,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY (raw_sms_id) REFERENCES raw_sms(id) ON DELETE CASCADE
@@ -182,6 +184,9 @@ class DatabaseHelper {
         available_limit REAL,
         total_limit REAL,
         outstanding REAL,
+        statement_due REAL,
+        current_due REAL,
+        last_statement_date INTEGER,
         currency TEXT NOT NULL,
         last_updated INTEGER NOT NULL,
         UNIQUE(bank, last4)
@@ -265,6 +270,19 @@ class DatabaseHelper {
                 'ALTER TABLE parsed_transactions ADD COLUMN transfer_account_id TEXT');
             await txn.execute(
                 'ALTER TABLE parsed_transactions ADD COLUMN reconciliation_notes TEXT');
+            break;
+          case 4:
+            await txn.execute(
+                'ALTER TABLE parsed_transactions ADD COLUMN sms_received_at INTEGER');
+            await txn.execute(
+                'ALTER TABLE parsed_transactions ADD COLUMN statement_date INTEGER');
+            await txn
+                .execute('ALTER TABLE cards ADD COLUMN statement_due REAL');
+            await txn.execute('ALTER TABLE cards ADD COLUMN current_due REAL');
+            await txn.execute(
+                'ALTER TABLE cards ADD COLUMN last_statement_date INTEGER');
+            await txn.execute(
+                'UPDATE parsed_transactions SET sms_received_at = transaction_date WHERE sms_received_at IS NULL');
             break;
         }
       });

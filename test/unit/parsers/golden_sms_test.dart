@@ -37,7 +37,7 @@ void main() {
           final expTypeStr = expected['type'] as String;
           expect(
             result.type.name.toLowerCase(),
-            equals(expTypeStr.toLowerCase()),
+            equals(expTypeStr.replaceAll('_', '').toLowerCase()),
             reason: 'Fixture $id failed on type match for: "$rawSms"',
           );
         }

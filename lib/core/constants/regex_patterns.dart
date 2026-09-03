@@ -33,7 +33,7 @@ class RegexPatterns {
   );
 
   static final RegExp availableLimit = RegExp(
-    r'(?:Avl\s*Limit|Available\s*limit|Avl\s*Lmt)\s*:\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
+    r'(?:Avl\s*Limit|Available\s*limit|Avl\s*Lmt)\s*(?::|is)?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 

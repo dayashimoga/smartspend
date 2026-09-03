@@ -175,5 +175,89 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.textContaining('Error: DB_ERROR'), findsOneWidget);
     });
+
+    testWidgets('Supports Select All, filter chips, and bulk actions',
+        (tester) async {
+      final sampleTxn1 = ParsedTransaction(
+        id: 'txn_bulk_1',
+        rawSmsId: 'sms_bulk_1',
+        type: TransactionType.purchase,
+        bank: Bank.icici,
+        amount: 500.0,
+        currency: 'INR',
+        transactionDate: DateTime(2026, 1, 10),
+        merchant: 'Uncertain Merchant',
+        category: 'General',
+        confidence: Confidence.low,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final sampleTxn2 = ParsedTransaction(
+        id: 'txn_bulk_2',
+        rawSmsId: 'sms_bulk_2',
+        type: TransactionType.unknown,
+        bank: Bank.unknown,
+        amount: 0.0,
+        currency: 'INR',
+        transactionDate: DateTime(2026, 1, 10),
+        confidence: Confidence.unparsed,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final testDb = DatabaseHelper.inMemory();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            dbHelperProvider.overrideWithValue(testDb),
+            needsReviewTransactionsProvider
+                .overrideWith((ref) => Future.value([sampleTxn1, sampleTxn2])),
+          ],
+          child: const MaterialApp(
+            home: ReviewScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 1. Check Filter Chips
+      expect(find.text('All (2)'), findsOneWidget);
+      expect(find.text('Unparsed (1)'), findsOneWidget);
+      expect(find.text('Low Confidence (1)'), findsOneWidget);
+
+      await tester.tap(find.text('Unparsed (1)'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Low Confidence (1)'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('All (2)'));
+      await tester.pumpAndSettle();
+
+      // 2. Select All, Deselect All, then Select All
+      await tester.tap(find.text('Select All'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Exclude (2)'), findsOneWidget);
+      expect(find.text('Approve (2)'), findsOneWidget);
+
+      await tester.tap(find.text('Deselect All'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Select All'));
+      await tester.pumpAndSettle();
+
+      // 3. Bulk Exclude
+      await tester.tap(find.text('Exclude (2)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.pump(const Duration(seconds: 11));
+      await testDb.close();
+    });
   });
 }

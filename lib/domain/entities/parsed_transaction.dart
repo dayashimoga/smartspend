@@ -13,6 +13,8 @@ class ParsedTransaction extends Equatable {
   final double amount;
   final String currency;
   final DateTime transactionDate;
+  final DateTime? smsReceivedAt;
+  final DateTime? statementDate;
   final String? merchant;
   final String? payee;
   final String? payer;
@@ -49,6 +51,8 @@ class ParsedTransaction extends Equatable {
     required this.amount,
     this.currency = 'INR',
     required this.transactionDate,
+    this.smsReceivedAt,
+    this.statementDate,
     this.merchant,
     this.payee,
     this.payer,
@@ -105,6 +109,8 @@ class ParsedTransaction extends Equatable {
     double? amount,
     String? currency,
     DateTime? transactionDate,
+    DateTime? smsReceivedAt,
+    DateTime? statementDate,
     String? merchant,
     String? payee,
     String? payer,
@@ -141,6 +147,8 @@ class ParsedTransaction extends Equatable {
       amount: amount ?? this.amount,
       currency: currency ?? this.currency,
       transactionDate: transactionDate ?? this.transactionDate,
+      smsReceivedAt: smsReceivedAt ?? this.smsReceivedAt,
+      statementDate: statementDate ?? this.statementDate,
       merchant: merchant ?? this.merchant,
       payee: payee ?? this.payee,
       payer: payer ?? this.payer,
@@ -180,6 +188,8 @@ class ParsedTransaction extends Equatable {
       'amount': amount,
       'currency': currency,
       'transaction_date': transactionDate.millisecondsSinceEpoch,
+      'sms_received_at': smsReceivedAt?.millisecondsSinceEpoch,
+      'statement_date': statementDate?.millisecondsSinceEpoch,
       'merchant': merchant,
       'payee': payee,
       'payer': payer,
@@ -226,6 +236,12 @@ class ParsedTransaction extends Equatable {
       currency: (map['currency'] as String?) ?? 'INR',
       transactionDate:
           DateTime.fromMillisecondsSinceEpoch(map['transaction_date'] as int),
+      smsReceivedAt: map['sms_received_at'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['sms_received_at'] as int)
+          : null,
+      statementDate: map['statement_date'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['statement_date'] as int)
+          : null,
       merchant: map['merchant'] as String?,
       payee: map['payee'] as String?,
       payer: map['payer'] as String?,
@@ -274,6 +290,8 @@ class ParsedTransaction extends Equatable {
         amount,
         currency,
         transactionDate,
+        smsReceivedAt,
+        statementDate,
         merchant,
         payee,
         payer,

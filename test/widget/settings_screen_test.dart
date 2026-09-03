@@ -192,5 +192,32 @@ void main() {
 
       await tester.pump(const Duration(seconds: 11));
     });
+
+    testWidgets('Tapping Load Golden Sample SMS loads sample data',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            dbHelperProvider.overrideWithValue(dbHelper),
+          ],
+          child: const MaterialApp(
+            home: SettingsScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Load Golden Sample SMS'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      await tester.pump(const Duration(seconds: 11));
+    });
   });
 }

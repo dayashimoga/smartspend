@@ -53,11 +53,13 @@ abstract class ICardRepository {
   Future<void> upsertCard(CreditCard card);
   Future<List<CreditCard>> getAllCards();
   Future<CreditCard?> getCardByBankAndLast4(Bank bank, String last4);
+  Future<List<CreditCard>> getCardsByBank(Bank bank);
 }
 
 abstract class IBillRepository {
   Future<void> upsertBill(Bill bill);
   Future<List<Bill>> getAllBills();
+  Future<List<Bill>> getBillsByCard(Bank bank, String cardLast4);
   Future<List<Bill>> getUpcomingBills({int days = 30});
 }
 

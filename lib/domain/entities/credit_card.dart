@@ -8,6 +8,9 @@ class CreditCard extends Equatable {
   final double? availableLimit;
   final double? totalLimit;
   final double? outstanding;
+  final double? statementDue;
+  final double? currentDue;
+  final DateTime? lastStatementDate;
   final String currency;
   final DateTime lastUpdated;
 
@@ -18,13 +21,17 @@ class CreditCard extends Equatable {
     this.availableLimit,
     this.totalLimit,
     this.outstanding,
+    this.statementDue,
+    this.currentDue,
+    this.lastStatementDate,
     this.currency = 'INR',
     required this.lastUpdated,
   });
 
   String get displayName => '${bank.displayName} Card (•••• $last4)';
 
-  double get utilizationPercentage {
+  /// Returns null when sufficient limit data is absent (shows "Unknown" in UI, never false 0%).
+  double? get utilizationPercentage {
     if (totalLimit != null && totalLimit! > 0 && availableLimit != null) {
       final used = totalLimit! - availableLimit!;
       if (used <= 0) return 0.0;
@@ -35,7 +42,7 @@ class CreditCard extends Equatable {
         (availableLimit! + outstanding!) > 0) {
       return (outstanding! / (availableLimit! + outstanding!)) * 100.0;
     }
-    return 0.0;
+    return null;
   }
 
   CreditCard copyWith({
@@ -45,6 +52,9 @@ class CreditCard extends Equatable {
     double? availableLimit,
     double? totalLimit,
     double? outstanding,
+    double? statementDue,
+    double? currentDue,
+    DateTime? lastStatementDate,
     String? currency,
     DateTime? lastUpdated,
   }) {
@@ -55,6 +65,9 @@ class CreditCard extends Equatable {
       availableLimit: availableLimit ?? this.availableLimit,
       totalLimit: totalLimit ?? this.totalLimit,
       outstanding: outstanding ?? this.outstanding,
+      statementDue: statementDue ?? this.statementDue,
+      currentDue: currentDue ?? this.currentDue,
+      lastStatementDate: lastStatementDate ?? this.lastStatementDate,
       currency: currency ?? this.currency,
       lastUpdated: lastUpdated ?? this.lastUpdated,
     );
@@ -68,6 +81,9 @@ class CreditCard extends Equatable {
       'available_limit': availableLimit,
       'total_limit': totalLimit,
       'outstanding': outstanding,
+      'statement_due': statementDue,
+      'current_due': currentDue,
+      'last_statement_date': lastStatementDate?.millisecondsSinceEpoch,
       'currency': currency,
       'last_updated': lastUpdated.millisecondsSinceEpoch,
     };
@@ -84,6 +100,12 @@ class CreditCard extends Equatable {
       availableLimit: (map['available_limit'] as num?)?.toDouble(),
       totalLimit: (map['total_limit'] as num?)?.toDouble(),
       outstanding: (map['outstanding'] as num?)?.toDouble(),
+      statementDue: (map['statement_due'] as num?)?.toDouble(),
+      currentDue: (map['current_due'] as num?)?.toDouble(),
+      lastStatementDate: map['last_statement_date'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(
+              map['last_statement_date'] as int)
+          : null,
       currency: (map['currency'] as String?) ?? 'INR',
       lastUpdated:
           DateTime.fromMillisecondsSinceEpoch(map['last_updated'] as int),
@@ -98,6 +120,9 @@ class CreditCard extends Equatable {
         availableLimit,
         totalLimit,
         outstanding,
+        statementDue,
+        currentDue,
+        lastStatementDate,
         currency,
         lastUpdated
       ];

@@ -36,18 +36,57 @@ class Reconciler {
           type: TransactionType.billPayment,
           category: 'Credit Card Payment',
         );
+      } else if (title.contains('mutual fund') ||
+          title.contains('iccl') ||
+          title.contains('bse') ||
+          title.contains('nse') ||
+          title.contains('zerodha') ||
+          title.contains('groww') ||
+          title.contains('sip') ||
+          title.contains('amc') ||
+          title.contains('upstox') ||
+          title.contains('kfintech') ||
+          title.contains('cams') ||
+          (current.payee != null &&
+              (current.payee!.toLowerCase().contains('mutual fund') ||
+                  current.payee!.toLowerCase().contains('iccl') ||
+                  current.payee!.toLowerCase().contains('zerodha')))) {
+        current = current.copyWith(
+          type: TransactionType.investmentTransfer,
+          category: 'Investments',
+        );
+      } else if ((title.contains('added to') && title.contains('fastag')) ||
+          title.contains('fastag recharge') ||
+          body.contains('netc fastag') ||
+          body.contains('fastag recharge')) {
+        current = current.copyWith(
+          type: TransactionType.fastagFunding,
+          category: 'FASTag Recharge',
+        );
       }
     }
 
     // 2. Detect Card Credit from payment arrival (reconciles card statement with bank debit)
-    if (current.type == TransactionType.credit) {
+    if (current.type == TransactionType.credit ||
+        current.type == TransactionType.unknown) {
       final title = current.displayTitle.toLowerCase();
+      final merchant = current.merchant?.toLowerCase() ?? '';
       if (title.contains('payment received') ||
+          title.contains('received payment') ||
           title.contains('card payment') ||
-          title.contains('autopay received')) {
+          title.contains('autopay received') ||
+          title.contains('credited to your card') ||
+          title.contains('credited to your sbi credit card') ||
+          merchant.contains('payment received') ||
+          merchant.contains('received payment')) {
         current = current.copyWith(
           type: TransactionType.billPayment,
           category: 'Credit Card Payment',
+        );
+      } else if (title.contains('cashback') || merchant.contains('cashback')) {
+        current = current.copyWith(
+          type: TransactionType.cashback,
+          category: 'Cashback & Rewards',
         );
       }
     }

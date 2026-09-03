@@ -19,9 +19,40 @@ class OnecardRules extends BankRule {
     required String normalizedBody,
     required DateTime smsTimestamp,
   }) {
+    // 1. OneCard Bill Statement
+    // "Hi Dayanand Thammaiah, as per your OneCard statement, the Total Amount Due is Rs. 469.32, and the payment due date is 02-08-2022."
+    final billMatch = RegExp(
+      r'(?:as\s+per\s+your\s+OneCard\s+statement|OneCard\s+statement).*?Total\s+Amount\s+Due\s+is\s+(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?).*?(?:payment\s+)?due\s+date\s+is\s+([0-9]{1,2}-[0-9]{1,2}-[0-9]{2,4})',
+      caseSensitive: false,
+    ).firstMatch(normalizedBody);
+
+    if (billMatch != null) {
+      final total = AmountParser.parse(billMatch.group(1)) ?? 0.0;
+      final dueDate = DateParser.parse(billMatch.group(2));
+
+      return ParsedTransaction(
+        id: const Uuid().v4(),
+        rawSmsId: rawSmsId,
+        type: TransactionType.bill,
+        bank: Bank.onecard,
+        amount: total,
+        currency: 'INR',
+        transactionDate: smsTimestamp,
+        smsReceivedAt: smsTimestamp,
+        billTotal: total,
+        billDueDate: dueDate,
+        confidence: Confidence.high,
+        parserVersion: '1.0.0',
+        category: 'Credit Card Bill',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    // 2. OneCard Purchase / Spent
     // "INR 1,840.00 spent on your SIB OneCard ending 9012 at BookMyShow on 02-Feb-26. Avl Limit: INR 88,160.00."
     final spentMatch = RegExp(
-      r'(?:INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s+spent\s+on\s+your\s+(?:SIB\s+)?OneCard\s+ending\s+(\d{4})\s+at\s+(.+?)\s+on\s+([0-9]{1,2}-[a-zA-Z]{3}-[0-9]{2,4})',
+      r'(?:INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s+spent\s+on\s+your\s+(?:SIB\s+)?OneCard(?:\s+ending\s+(\d{4}))?\s+at\s+(.+?)\s+on\s+([0-9]{1,2}-[a-zA-Z]{3}-[0-9]{2,4})',
       caseSensitive: false,
     ).firstMatch(normalizedBody);
 
@@ -45,11 +76,12 @@ class OnecardRules extends BankRule {
         amount: amount,
         currency: 'INR',
         transactionDate: txnDate,
+        smsReceivedAt: smsTimestamp,
         merchant: merchant,
         availableLimit: avlLimit,
         confidence: Confidence.high,
         parserVersion: '1.0.0',
-        category: 'Entertainment',
+        category: 'Shopping',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

@@ -162,15 +162,17 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                 final color = colors[colorIdx++ % colors.length];
                 final isSelected = _selectedDrillCategory == entry.key;
 
+                final showTitle = pct >= 5.0;
                 return PieChartSectionData(
                   color: color,
                   value: entry.value,
-                  title: '${pct.toStringAsFixed(0)}%',
+                  title: showTitle ? '${pct.toStringAsFixed(0)}%' : '',
+                  showTitle: showTitle,
                   radius: isSelected ? 65 : 55,
                   titleStyle: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12),
+                      fontSize: 11),
                 );
               }).toList();
 

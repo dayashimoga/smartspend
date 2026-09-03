@@ -69,9 +69,10 @@ void main() {
         correctionRepo: correctionRepo,
       );
 
-      // Step 2: Initial Historical SMS Synchronization (19 messages, with 1 whitespace-variant duplicate)
+      // Step 2: Initial Historical SMS Synchronization
       final initialSyncResult = await ingestUseCase.execute(goldenMessages);
-      expect(initialSyncResult.newlyIngested, equals(18));
+      expect(
+          initialSyncResult.newlyIngested, equals(goldenMessages.length - 1));
       expect(initialSyncResult.duplicatesSkipped, equals(1));
 
       // Step 3: Check Dashboard Summary populated correctly
@@ -79,8 +80,8 @@ void main() {
       expect(summaryBefore.totalIncome, greaterThan(0));
       expect(summaryBefore.totalExpense, greaterThan(0));
 
-      final allTxns = await txnRepo.getAllTransactions(limit: 50);
-      expect(allTxns.length, equals(18));
+      final allTxns = await txnRepo.getAllTransactions(limit: 100);
+      expect(allTxns.length, equals(goldenMessages.length - 1));
 
       // Pick a transaction to apply manual user edit
       final targetTxn = allTxns.firstWhere((t) => t.cardLast4 == '4000');
