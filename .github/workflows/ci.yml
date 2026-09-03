@@ -102,3 +102,37 @@ jobs:
         with:
           name: smartspend-binaries-${{ github.sha }}
           path: dist/
+
+  smoke-test:
+    name: Release APK Headless Emulator Smoke Test
+    needs: build-android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Built Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: smartspend-binaries-${{ github.sha }}
+          path: dist/
+
+      - name: Enable KVM Hardware Acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Android Emulator & Verify Clean Launch
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install dist/smartspend-release.apk
+            adb shell am start -n com.smartspend.app/.MainActivity
+            sleep 10
+            adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity"
+

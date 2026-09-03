@@ -277,5 +277,132 @@ void main() {
       final missingId = await smsRepo.getSmsById('missing');
       expect(missingId, isNull);
     });
+
+    test(
+        'CardRepository and AccountRepository getCardsAsOf and getAccountsAsOf',
+        () async {
+      final now = DateTime(2026, 9, 3);
+      final card = CreditCard(
+        id: 'c_asof_1',
+        bank: Bank.hdfc,
+        last4: '9137',
+        availableLimit: 100000.0,
+        totalLimit: 150000.0,
+        outstanding: 50000.0,
+        lastUpdated: now.subtract(const Duration(days: 30)),
+      );
+      await cardRepo.upsertCard(card);
+
+      final byBank = await cardRepo.getCardsByBank(Bank.hdfc);
+      expect(byBank.length, equals(1));
+      expect(byBank.first.last4, equals('9137'));
+
+      // Without historical transactions
+      final asOfBefore =
+          await cardRepo.getCardsAsOf(now.subtract(const Duration(days: 40)));
+      expect(asOfBefore.first.availableLimit, equals(100000.0));
+
+      // With historical transactions
+      final sms1 = SmsRecord(
+        id: 's1',
+        sender: 'HDFCBK',
+        body: 'Spent 2000',
+        timestamp: now,
+        fingerprint: 'fp_asof_1',
+        ingestedAt: now,
+      );
+      final sms2 = SmsRecord(
+        id: 's2',
+        sender: 'HDFCBK',
+        body: 'Debited 5000',
+        timestamp: now,
+        fingerprint: 'fp_asof_2',
+        ingestedAt: now,
+      );
+      await smsRepo.saveSms(sms1);
+      await smsRepo.saveSms(sms2);
+
+      final txn1 = ParsedTransaction(
+        id: 't_hist_1',
+        rawSmsId: 's1',
+        type: TransactionType.purchase,
+        bank: Bank.hdfc,
+        cardLast4: '9137',
+        amount: 2000.0,
+        availableLimit: 90000.0,
+        currency: 'INR',
+        transactionDate: now.subtract(const Duration(days: 10)),
+        createdAt: now,
+        updatedAt: now,
+      );
+      await txnRepo.saveTransaction(txn1);
+
+      final asOfAfter =
+          await cardRepo.getCardsAsOf(now.subtract(const Duration(days: 5)));
+      expect(asOfAfter.first.availableLimit, equals(90000.0));
+
+      // Account getAccountsAsOf
+      final acct = Account(
+        id: 'a_asof_1',
+        bank: Bank.hdfc,
+        last4: '5555',
+        accountType: 'Savings',
+        currentBalance: 50000.0,
+        lastUpdated: now.subtract(const Duration(days: 30)),
+      );
+      await accountRepo.upsertAccount(acct);
+
+      final acctBefore = await accountRepo
+          .getAccountsAsOf(now.subtract(const Duration(days: 40)));
+      expect(acctBefore.first.currentBalance, equals(50000.0));
+
+      final txnAcct = ParsedTransaction(
+        id: 't_acct_hist',
+        rawSmsId: 's2',
+        type: TransactionType.debit,
+        bank: Bank.hdfc,
+        accountLast4: '5555',
+        amount: 5000.0,
+        balance: 45000.0,
+        currency: 'INR',
+        transactionDate: now.subtract(const Duration(days: 10)),
+        createdAt: now,
+        updatedAt: now,
+      );
+      await txnRepo.saveTransaction(txnAcct);
+
+      final acctAfter = await accountRepo
+          .getAccountsAsOf(now.subtract(const Duration(days: 5)));
+      expect(acctAfter.first.currentBalance, equals(45000.0));
+    });
+
+    test('BillRepository getBillsByDateRange queries correctly', () async {
+      final now = DateTime(2026, 9, 3);
+      final b1 = Bill(
+        id: 'b_range_1',
+        bank: Bank.axis,
+        cardLast4: '9478',
+        totalAmount: 10000.0,
+        dueDate: now.add(const Duration(days: 5)),
+        createdAt: now,
+      );
+      final b2 = Bill(
+        id: 'b_range_2',
+        bank: Bank.axis,
+        cardLast4: '9478',
+        totalAmount: 12000.0,
+        dueDate: now.add(const Duration(days: 45)),
+        createdAt: now,
+      );
+      await billRepo.upsertBill(b1);
+      await billRepo.upsertBill(b2);
+
+      final rangeBills = await billRepo.getBillsByDateRange(
+        now,
+        now.add(const Duration(days: 10)),
+      );
+      expect(rangeBills.length, equals(1));
+      expect(rangeBills.first.id, equals('b_range_1'));
+    });
   });
 }

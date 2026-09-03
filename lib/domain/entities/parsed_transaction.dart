@@ -86,6 +86,19 @@ class ParsedTransaction extends Equatable {
     if (vehicle != null && vehicle!.isNotEmpty) return 'Toll: $vehicle';
     if (tollPlaza != null && tollPlaza!.isNotEmpty) return 'Toll at $tollPlaza';
     if (payer != null && payer!.isNotEmpty) return payer!;
+    if (bank == Bank.unknown && type == TransactionType.unknown) {
+      return category.isNotEmpty &&
+              category != 'Other' &&
+              category != 'Uncategorized'
+          ? category
+          : 'Unresolved Transaction';
+    }
+    if (bank == Bank.unknown) {
+      return type.displayName;
+    }
+    if (type == TransactionType.unknown) {
+      return '${bank.displayName} Transaction';
+    }
     return '${bank.shortName} ${type.displayName}';
   }
 

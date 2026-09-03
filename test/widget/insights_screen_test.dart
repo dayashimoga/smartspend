@@ -57,7 +57,7 @@ void main() {
   final emptySummary = FinancialSummary.empty();
 
   group('InsightsScreen Comprehensive UI Test Suite', () {
-    testWidgets('Renders charts, ratios, and category breakdowns',
+    testWidgets('Renders charts, ratios, time filter, and category breakdowns',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
@@ -68,7 +68,11 @@ void main() {
           overrides: [
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(fullSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(fullSummary)),
             allTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
                 .overrideWith((ref) => Future.value(sampleTxns)),
           ],
           child: const MaterialApp(
@@ -81,7 +85,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Financial Insights'), findsOneWidget);
-      expect(find.text('Income vs Spend Ratio'), findsOneWidget);
+      expect(find.text('Month'), findsOneWidget);
+      expect(find.textContaining('Income vs Spend Ratio'), findsOneWidget);
       expect(find.textContaining('Spending by Category'), findsOneWidget);
       expect(find.text('Groceries'), findsWidgets);
       expect(find.text('Fuel'), findsWidgets);
@@ -104,7 +109,11 @@ void main() {
           overrides: [
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(emptySummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(emptySummary)),
             allTransactionsProvider.overrideWith((ref) => Future.value([])),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value([])),
           ],
           child: const MaterialApp(
             home: InsightsScreen(),
@@ -116,7 +125,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Financial Insights'), findsOneWidget);
-      expect(find.text('Income vs Spend Ratio'), findsOneWidget);
+      expect(find.textContaining('Income vs Spend Ratio'), findsOneWidget);
       expect(find.textContaining('Spending by Category'), findsNothing);
     });
 
@@ -126,7 +135,11 @@ void main() {
           overrides: [
             financialSummaryProvider
                 .overrideWith((ref) => Future.error('DB_ERROR')),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.error('DB_ERROR')),
             allTransactionsProvider
+                .overrideWith((ref) => Future.error('DB_ERROR')),
+            filteredTransactionsProvider
                 .overrideWith((ref) => Future.error('DB_ERROR')),
           ],
           child: const MaterialApp(

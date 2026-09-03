@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/parsed_transaction.dart';
 import '../../../domain/enums/transaction_type.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/time_period_selector.dart';
 import '../../widgets/transaction_tile.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -19,7 +20,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final txnsAsync = ref.watch(allTransactionsProvider);
+    final period = ref.watch(selectedTimePeriodProvider);
+    final txnsAsync = ref.watch(filteredTransactionsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -28,6 +30,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ),
       body: Column(
         children: [
+          // Time Period Selector
+          TimePeriodSelector(
+            period: period,
+            onPeriodChanged: (newPeriod) {
+              ref.read(selectedTimePeriodProvider.notifier).state = newPeriod;
+            },
+          ),
+
           // Search Box
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

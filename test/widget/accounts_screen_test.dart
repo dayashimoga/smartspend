@@ -43,14 +43,19 @@ void main() {
   ];
 
   group('AccountsScreen Comprehensive UI Test Suite', () {
-    testWidgets('Renders bank accounts and credit cards across tabs',
+    testWidgets(
+        'Renders bank accounts and credit cards across tabs with time filter',
         (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             accountsProvider
                 .overrideWith((ref) => Future.value(sampleAccounts)),
+            filteredAccountsProvider
+                .overrideWith((ref) => Future.value(sampleAccounts)),
             cardsProvider.overrideWith((ref) => Future.value(sampleCards)),
+            filteredCardsProvider
+                .overrideWith((ref) => Future.value(sampleCards)),
           ],
           child: const MaterialApp(
             home: AccountsScreen(),
@@ -64,6 +69,9 @@ void main() {
       expect(find.text('Accounts & Cards'), findsOneWidget);
       expect(find.text('Bank Accounts'), findsOneWidget);
       expect(find.text('Credit Cards'), findsOneWidget);
+
+      // Verify TimePeriodSelector presets
+      expect(find.text('Month'), findsOneWidget);
 
       // Verify Bank Accounts Tab
       expect(find.text('HDFC Bank'), findsOneWidget);
@@ -83,7 +91,9 @@ void main() {
         ProviderScope(
           overrides: [
             accountsProvider.overrideWith((ref) => Future.value([])),
+            filteredAccountsProvider.overrideWith((ref) => Future.value([])),
             cardsProvider.overrideWith((ref) => Future.value([])),
+            filteredCardsProvider.overrideWith((ref) => Future.value([])),
           ],
           child: const MaterialApp(
             home: AccountsScreen(),
@@ -108,7 +118,11 @@ void main() {
         ProviderScope(
           overrides: [
             accountsProvider.overrideWith((ref) => Future.error('DB_ERROR')),
+            filteredAccountsProvider
+                .overrideWith((ref) => Future.error('DB_ERROR')),
             cardsProvider.overrideWith((ref) => Future.error('DB_ERROR')),
+            filteredCardsProvider
+                .overrideWith((ref) => Future.error('DB_ERROR')),
           ],
           child: const MaterialApp(
             home: AccountsScreen(),

@@ -7,7 +7,7 @@ import '../crypto/key_manager.dart';
 
 class DatabaseHelper {
   static const _dbName = 'smartspend_vault_v1.db';
-  static const _dbVersion = 4;
+  static const _dbVersion = 5;
 
   static DatabaseHelper? _instance;
   static Database? _staticDatabase;
@@ -198,12 +198,16 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         bank TEXT NOT NULL,
         card_last4 TEXT NOT NULL,
+        biller_name TEXT,
+        account_number TEXT,
         total_amount REAL NOT NULL,
         minimum_amount REAL NOT NULL,
+        paid_amount REAL NOT NULL DEFAULT 0.0,
         due_date INTEGER NOT NULL,
         status TEXT NOT NULL,
         currency TEXT NOT NULL,
         payment_transaction_id TEXT,
+        source_date INTEGER,
         created_at INTEGER NOT NULL
       );
     ''');
@@ -284,9 +288,25 @@ class DatabaseHelper {
             await txn.execute(
                 'UPDATE parsed_transactions SET sms_received_at = transaction_date WHERE sms_received_at IS NULL');
             break;
+          case 5:
+            await txn.execute(
+                'ALTER TABLE bills ADD COLUMN paid_amount REAL NOT NULL DEFAULT 0.0');
+            await txn
+                .execute('ALTER TABLE bills ADD COLUMN source_date INTEGER');
+            await txn.execute('ALTER TABLE bills ADD COLUMN biller_name TEXT');
+            await txn
+                .execute('ALTER TABLE bills ADD COLUMN account_number TEXT');
+            break;
         }
       });
     }
+  }
+
+  /// Direct migration testing helper
+  @visibleForTesting
+  Future<void> testOnUpgrade(
+      Database db, int oldVersion, int newVersion) async {
+    await _onUpgrade(db, oldVersion, newVersion);
   }
 
   /// Close and reset the database (for testing or user vault reset)

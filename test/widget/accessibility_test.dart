@@ -32,7 +32,12 @@ void main() {
           overrides: [
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(sampleSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(sampleSummary)),
             recentTransactionsProvider.overrideWith((ref) => Future.value([])),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value([])),
+            filteredBillsProvider.overrideWith((ref) => Future.value([])),
           ],
           child: const MaterialApp(
             home: MediaQuery(
@@ -65,7 +70,12 @@ void main() {
           overrides: [
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(sampleSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(sampleSummary)),
             recentTransactionsProvider.overrideWith((ref) => Future.value([])),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value([])),
+            filteredBillsProvider.overrideWith((ref) => Future.value([])),
           ],
           child: const MaterialApp(
             home: MediaQuery(
@@ -94,7 +104,12 @@ void main() {
           overrides: [
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(sampleSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(sampleSummary)),
             recentTransactionsProvider.overrideWith((ref) => Future.value([])),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value([])),
+            filteredBillsProvider.overrideWith((ref) => Future.value([])),
           ],
           child: const MaterialApp(
             home: DashboardScreen(),

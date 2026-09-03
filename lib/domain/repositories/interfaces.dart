@@ -47,6 +47,7 @@ abstract class IAccountRepository {
   Future<void> upsertAccount(Account account);
   Future<List<Account>> getAllAccounts();
   Future<Account?> getAccountByBankAndLast4(Bank bank, String last4);
+  Future<List<Account>> getAccountsAsOf(DateTime asOf);
 }
 
 abstract class ICardRepository {
@@ -54,6 +55,7 @@ abstract class ICardRepository {
   Future<List<CreditCard>> getAllCards();
   Future<CreditCard?> getCardByBankAndLast4(Bank bank, String last4);
   Future<List<CreditCard>> getCardsByBank(Bank bank);
+  Future<List<CreditCard>> getCardsAsOf(DateTime asOf);
 }
 
 abstract class IBillRepository {
@@ -61,6 +63,7 @@ abstract class IBillRepository {
   Future<List<Bill>> getAllBills();
   Future<List<Bill>> getBillsByCard(Bank bank, String cardLast4);
   Future<List<Bill>> getUpcomingBills({int days = 30});
+  Future<List<Bill>> getBillsByDateRange(DateTime start, DateTime end);
 }
 
 abstract class IFastagRepository {

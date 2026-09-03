@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/amount_parser.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/time_period_selector.dart';
 import '../../widgets/transaction_tile.dart';
 
 class InsightsScreen extends ConsumerStatefulWidget {
@@ -18,8 +19,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final summaryAsync = ref.watch(financialSummaryProvider);
-    final txnsAsync = ref.watch(allTransactionsProvider);
+    final period = ref.watch(selectedTimePeriodProvider);
+    final summaryAsync = ref.watch(filteredFinancialSummaryProvider);
+    final txnsAsync = ref.watch(filteredTransactionsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -27,97 +29,109 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         title: const Text('Financial Insights'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
+          // Time Period Selector
+          TimePeriodSelector(
+            period: period,
+            onPeriodChanged: (newPeriod) {
+              ref.read(selectedTimePeriodProvider.notifier).state = newPeriod;
+            },
+          ),
+          const SizedBox(height: 8),
+
           // Income vs Expense Comparison Bar
           summaryAsync.when(
             data: (summary) {
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Income vs Spend Ratio',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 180,
-                        child: BarChart(
-                          BarChartData(
-                            alignment: BarChartAlignment.spaceAround,
-                            maxY: (summary.totalIncome > summary.totalExpense
-                                        ? summary.totalIncome
-                                        : summary.totalExpense) *
-                                    1.2 +
-                                100,
-                            barTouchData: BarTouchData(
-                              touchTooltipData: BarTouchTooltipData(
-                                getTooltipItem:
-                                    (group, groupIndex, rod, rodIndex) {
-                                  final label =
-                                      groupIndex == 0 ? 'Income' : 'Spend';
-                                  return BarTooltipItem(
-                                    '$label\n${AmountParser.format(rod.toY, currency: summary.currency)}',
-                                    const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold),
-                                  );
-                                },
-                              ),
-                            ),
-                            titlesData: FlTitlesData(
-                              leftTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false)),
-                              topTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false)),
-                              rightTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false)),
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  getTitlesWidget: (val, meta) {
-                                    return Text(
-                                      val == 0 ? 'Income' : 'Spend',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13),
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Income vs Spend Ratio (${period.displayLabel})',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 180,
+                          child: BarChart(
+                            BarChartData(
+                              alignment: BarChartAlignment.spaceAround,
+                              maxY: (summary.totalIncome > summary.totalExpense
+                                          ? summary.totalIncome
+                                          : summary.totalExpense) *
+                                      1.2 +
+                                  100,
+                              barTouchData: BarTouchData(
+                                touchTooltipData: BarTouchTooltipData(
+                                  getTooltipItem:
+                                      (group, groupIndex, rod, rodIndex) {
+                                    final label =
+                                        groupIndex == 0 ? 'Income' : 'Spend';
+                                    return BarTooltipItem(
+                                      '$label\n${AmountParser.format(rod.toY, currency: summary.currency)}',
+                                      const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold),
                                     );
                                   },
                                 ),
                               ),
+                              titlesData: FlTitlesData(
+                                leftTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                topTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                rightTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (val, meta) {
+                                      return Text(
+                                        val == 0 ? 'Income' : 'Spend',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              gridData: const FlGridData(show: false),
+                              borderData: FlBorderData(show: false),
+                              barGroups: [
+                                BarChartGroupData(
+                                  x: 0,
+                                  barRods: [
+                                    BarChartRodData(
+                                      toY: summary.totalIncome,
+                                      color: AppColors.income,
+                                      width: 38,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ],
+                                ),
+                                BarChartGroupData(
+                                  x: 1,
+                                  barRods: [
+                                    BarChartRodData(
+                                      toY: summary.totalExpense,
+                                      color: AppColors.expense,
+                                      width: 38,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            gridData: const FlGridData(show: false),
-                            borderData: FlBorderData(show: false),
-                            barGroups: [
-                              BarChartGroupData(
-                                x: 0,
-                                barRods: [
-                                  BarChartRodData(
-                                    toY: summary.totalIncome,
-                                    color: AppColors.income,
-                                    width: 38,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ],
-                              ),
-                              BarChartGroupData(
-                                x: 1,
-                                barRods: [
-                                  BarChartRodData(
-                                    toY: summary.totalExpense,
-                                    color: AppColors.expense,
-                                    width: 38,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ],
-                              ),
-                            ],
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );

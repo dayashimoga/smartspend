@@ -16,15 +16,14 @@ void main() {
       type: TransactionType.purchase,
       bank: Bank.icici,
       cardLast4: '4000',
-      amount: 499.0,
+      amount: 1540.50,
       currency: 'INR',
       transactionDate: DateTime(2026, 1, 10),
       merchant: 'Amazon Shopping',
       category: 'Shopping',
       confidence: Confidence.high,
       reference: 'UPI123456',
-      balance: 15000.0,
-      availableLimit: 195000.0,
+      availableLimit: 45000.0,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     ),
@@ -62,12 +61,15 @@ void main() {
   ];
 
   group('TransactionsScreen Comprehensive UI Test Suite', () {
-    testWidgets('Renders transaction list and opens detail modal on tap',
+    testWidgets(
+        'Renders transaction list with time filter and opens detail modal on tap',
         (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             allTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
                 .overrideWith((ref) => Future.value(sampleTxns)),
           ],
           child: const MaterialApp(
@@ -80,6 +82,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Transactions'), findsOneWidget);
+      expect(find.text('Month'), findsOneWidget);
       expect(find.text('Amazon Shopping'), findsOneWidget);
       expect(find.text('Corporate Salary'), findsOneWidget);
       expect(find.text('KIAL Toll Plaza'), findsOneWidget);
@@ -109,6 +112,8 @@ void main() {
         ProviderScope(
           overrides: [
             allTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
                 .overrideWith((ref) => Future.value(sampleTxns)),
           ],
           child: const MaterialApp(
@@ -141,6 +146,8 @@ void main() {
           overrides: [
             allTransactionsProvider
                 .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
           ],
           child: const MaterialApp(
             home: TransactionsScreen(),
@@ -171,6 +178,8 @@ void main() {
         ProviderScope(
           overrides: [
             allTransactionsProvider
+                .overrideWith((ref) => Future.error('DB_READ_ERROR')),
+            filteredTransactionsProvider
                 .overrideWith((ref) => Future.error('DB_READ_ERROR')),
           ],
           child: const MaterialApp(

@@ -40,9 +40,15 @@ class MerchantNormalizer {
     'apple': 'Apple Services',
     'google': 'Google Services',
     'goog-payments@axisbank': 'Google Pay',
+    'google pay': 'Google Pay',
+    'phonepe': 'PhonePe',
+    'paytm': 'Paytm',
     'cred': 'CRED',
     'billdesk': 'BillDesk',
     'cheq': 'Cheq',
+    'dmart': 'DMart',
+    'jiomart': 'JioMart',
+    'hotstar': 'Disney+ Hotstar',
     'mutual funds iccl': 'Mutual Funds (ICCL)',
     'zerodha': 'Zerodha',
     'groww': 'Groww',
@@ -61,12 +67,18 @@ class MerchantNormalizer {
     'Zepto': 'Groceries',
     'Blinkit': 'Groceries',
     'BigBasket': 'Groceries',
+    'DMart': 'Groceries',
+    'JioMart': 'Groceries',
     'BookMyShow': 'Entertainment',
     'Netflix': 'Entertainment',
     'Spotify': 'Entertainment',
+    'Disney+ Hotstar': 'Entertainment',
     'GitHub': 'Subscriptions',
     'Apple Services': 'Subscriptions',
     'Google Services': 'Subscriptions',
+    'Google Pay': 'Digital Payments',
+    'PhonePe': 'Digital Payments',
+    'Paytm': 'Digital Payments',
     'IRCTC': 'Travel',
     'MakeMyTrip': 'Travel',
     'Goibibo': 'Travel',
@@ -111,6 +123,9 @@ class MerchantNormalizer {
         if (_merchantCategories.containsKey(matchedCanonical)) {
           category = _merchantCategories[matchedCanonical]!;
         }
+        if (merchant == null || merchant.isEmpty) {
+          merchant = matchedCanonical;
+        }
       }
     }
 
@@ -138,6 +153,11 @@ class MerchantNormalizer {
     } else if (txn.type == TransactionType.refund ||
         txn.type == TransactionType.reversal) {
       category = 'Refund & Reversal';
+    }
+
+    // Guard against category being 'Other'
+    if (category.toLowerCase() == 'other' || category.isEmpty) {
+      category = 'Uncategorized';
     }
 
     return txn.copyWith(

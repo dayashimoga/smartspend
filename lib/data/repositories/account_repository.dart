@@ -39,4 +39,34 @@ class AccountRepository implements IAccountRepository {
     if (res.isEmpty) return null;
     return Account.fromMap(res.first);
   }
+
+  @override
+  Future<List<Account>> getAccountsAsOf(DateTime asOf) async {
+    final db = await _dbHelper.database;
+    final accounts = await getAllAccounts();
+    final asOfMs = asOf.millisecondsSinceEpoch;
+
+    final result = <Account>[];
+    for (final acct in accounts) {
+      final txRes = await db.query(
+        'parsed_transactions',
+        where:
+            'bank = ? AND account_last4 = ? AND balance IS NOT NULL AND transaction_date <= ?',
+        whereArgs: [acct.bank.name, acct.last4, asOfMs],
+        orderBy: 'transaction_date DESC',
+        limit: 1,
+      );
+
+      if (txRes.isNotEmpty) {
+        final bal =
+            (txRes.first['balance'] as num?)?.toDouble() ?? acct.currentBalance;
+        final date = DateTime.fromMillisecondsSinceEpoch(
+            txRes.first['transaction_date'] as int);
+        result.add(acct.copyWith(currentBalance: bal, lastUpdated: date));
+      } else {
+        result.add(acct);
+      }
+    }
+    return result;
+  }
 }

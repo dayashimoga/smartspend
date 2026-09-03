@@ -313,4 +313,82 @@ class Reconciler {
     }
     return bill;
   }
+
+  /// Reconciles bills against detected payments.
+  /// Matches payments by cardLast4 and/or bank within proximity of bill creation/due date,
+  /// accumulates paid amounts for partial/full payments, and resolves duplicate statements.
+  static List<Bill> reconcileBillsWithPayments(
+    List<Bill> bills,
+    List<ParsedTransaction> payments,
+  ) {
+    if (bills.isEmpty) return [];
+
+    // First deduplicate duplicate statements for same card in same billing cycle
+    final deduplicatedBills = <String, Bill>{};
+    for (final bill in bills) {
+      final key =
+          '${bill.bank.name}_${bill.cardLast4}_${bill.dueDate.year}_${bill.dueDate.month}';
+      if (!deduplicatedBills.containsKey(key) ||
+          bill.createdAt.isAfter(deduplicatedBills[key]!.createdAt)) {
+        deduplicatedBills[key] = bill;
+      }
+    }
+
+    final billList = deduplicatedBills.values.toList();
+    final billPayments = payments
+        .where((p) =>
+            p.type == TransactionType.billPayment ||
+            (p.category.toLowerCase().contains('credit card payment') &&
+                !p.isExcluded))
+        .toList();
+
+    return billList.map((bill) {
+      if (bill.totalAmount <= 0) {
+        return bill.copyWith(status: BillStatus.noPaymentRequired);
+      }
+
+      double totalPaid = 0.0;
+      String? lastPaymentId;
+
+      for (final payment in billPayments) {
+        bool matchesCard = false;
+        if (bill.cardLast4.isNotEmpty &&
+            payment.cardLast4 != null &&
+            payment.cardLast4!.isNotEmpty) {
+          matchesCard = bill.cardLast4 == payment.cardLast4;
+        } else if (bill.bank == payment.bank) {
+          matchesCard = true;
+        }
+
+        if (matchesCard) {
+          // Check date proximity: payment made between bill createdAt/sourceDate and dueDate + 15 days
+          final refDate = bill.sourceDate ?? bill.createdAt;
+          final isAfterBill = payment.transactionDate
+              .isAfter(refDate.subtract(const Duration(days: 3)));
+          final isBeforeGrace = payment.transactionDate
+              .isBefore(bill.dueDate.add(const Duration(days: 15)));
+
+          if (isAfterBill && isBeforeGrace) {
+            totalPaid += payment.amount;
+            lastPaymentId = payment.id;
+          }
+        }
+      }
+
+      BillStatus newStatus;
+      if (totalPaid >= bill.totalAmount) {
+        newStatus = BillStatus.paid;
+      } else if (totalPaid > 0) {
+        newStatus = BillStatus.partial;
+      } else {
+        newStatus = bill.effectiveStatus;
+      }
+
+      return bill.copyWith(
+        paidAmount: totalPaid,
+        status: newStatus,
+        paymentTransactionId: lastPaymentId,
+      );
+    }).toList();
+  }
 }
