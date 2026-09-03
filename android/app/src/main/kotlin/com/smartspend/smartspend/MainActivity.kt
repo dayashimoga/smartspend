@@ -2,6 +2,7 @@ package com.smartspend.smartspend
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.core.app.ActivityCompat
