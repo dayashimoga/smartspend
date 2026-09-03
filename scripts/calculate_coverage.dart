@@ -68,7 +68,8 @@ void main() {
 
   if (percent < 90.0) {
     // ignore: avoid_print
-    print('\n[ERROR] Code coverage ${percent.toStringAsFixed(2)}% is below the mandatory 90.0% quality gate!');
+    print(
+        '\n[ERROR] Code coverage ${percent.toStringAsFixed(2)}% is below the mandatory 90.0% quality gate!');
     exit(1);
   }
 }
