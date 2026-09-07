@@ -9,8 +9,10 @@ import 'package:smartspend/data/repositories/fastag_repository.dart';
 import 'package:smartspend/data/repositories/ingestion_repository.dart';
 import 'package:smartspend/data/repositories/sms_repository.dart';
 import 'package:smartspend/data/repositories/transaction_repository.dart';
+import 'package:smartspend/domain/entities/bill.dart';
 import 'package:smartspend/domain/entities/ingestion_checkpoint.dart';
 import 'package:smartspend/domain/entities/ingestion_state.dart';
+import 'package:smartspend/domain/enums/bank.dart';
 import 'package:smartspend/domain/repositories/interfaces.dart';
 import 'package:smartspend/presentation/providers/app_providers.dart';
 
@@ -378,6 +380,79 @@ void main() {
 
       final cards = await container.read(filteredCardsProvider.future);
       expect(cards, isEmpty);
+    });
+
+    test(
+        'IncrementalIngestionService exercises chronological balance guard, bills, and card dues',
+        () async {
+      final txnRepo = TransactionRepository(dbHelper: dbHelper);
+      final acctRepo = AccountRepository(dbHelper: dbHelper);
+      final cardRepo = CardRepository(dbHelper: dbHelper);
+      final billRepo = BillRepository(dbHelper: dbHelper);
+      final fastagRepo = FastagRepository(dbHelper: dbHelper);
+      final ingRepo = IngestionRepository(dbHelper: dbHelper);
+      final smsRepo = SmsRepository(dbHelper: dbHelper);
+
+      final service = IncrementalIngestionService(
+        smsRepo: smsRepo,
+        txnRepo: txnRepo,
+        acctRepo: acctRepo,
+        cardRepo: cardRepo,
+        billRepo: billRepo,
+        fastagRepo: fastagRepo,
+        ingestionRepo: ingRepo,
+        dbHelper: dbHelper,
+      );
+
+      final now = DateTime(2026, 9, 7, 10, 0);
+      final older = DateTime(2026, 9, 5, 10, 0);
+
+      final messages = [
+        // 1. Credit card bill
+        {
+          'id': 'msg_bill_1',
+          'sender': 'AD-HDFCBK',
+          'body':
+              'Statement for HDFC Bank Credit Card ending 9137 for 15-AUG-26. Total Due: Rs. 15,400.00, Min Due: Rs. 770.00, Due Date: 05-SEP-26.',
+          'timestamp': now.millisecondsSinceEpoch,
+        },
+        // 2. Newer account balance
+        {
+          'id': 'msg_acct_new',
+          'sender': 'AD-HDFCBK',
+          'body':
+              'INR 500.00 debited from HDFC Bank A/C XX0564 on 07-SEP-26 to SWIGGY. Avl bal INR 56,473.36.',
+          'timestamp': now.millisecondsSinceEpoch,
+        },
+        // 3. Older account balance (triggers chronological balance guard!)
+        {
+          'id': 'msg_acct_old',
+          'sender': 'AD-HDFCBK',
+          'body':
+              'INR 200.00 debited from HDFC Bank A/C XX0564 on 05-SEP-26 to ZOMATO. Avl bal INR 50,000.00.',
+          'timestamp': older.millisecondsSinceEpoch,
+        },
+        // 4. Card payment (triggers bill marking paid and card update)
+        {
+          'id': 'msg_card_pay',
+          'sender': 'AD-HDFCBK',
+          'body':
+              'INR 15,400.00 debited from HDFC Bank A/C XX0564 on 07-SEP-26 for credit card payment. Avl bal INR 41,073.36.',
+          'timestamp': now.millisecondsSinceEpoch,
+        },
+      ];
+
+      final res = await service.startIngestion(overrideMessages: messages);
+      expect(res.isCompleted, isTrue);
+
+      final acct = await acctRepo.getAccountByBankAndLast4(Bank.hdfc, '0564');
+      expect(acct, isNotNull);
+      // Older balance 50,000 did not overwrite newer balance 41,073.36
+      expect(acct!.currentBalance, equals(41073.36));
+
+      final bills = await billRepo.getAllBills();
+      expect(bills, isNotEmpty);
+      expect(bills.first.status, equals(BillStatus.paid));
     });
   });
 }

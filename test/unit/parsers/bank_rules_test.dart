@@ -371,6 +371,96 @@ Call 18002586161/SMS BLOCK CC 9137 to 7308080808''';
       expect(parsedBal.balance, equals(56473.36));
       expect(parsedBal.confidence, equals(Confidence.high));
     });
+
+    test('Parses HDFC credit card statement formats A, B, C, D', () {
+      final rule = HdfcRules();
+      // Format A
+      final pA = rule.parse(
+        rawSmsId: 'sms_h_a',
+        rawBody:
+            'Statement for HDFC Bank Credit Card ending 9137 for 15-AUG-26. Total Due: Rs. 15,400.00, Min Due: Rs. 770.00, Due Date: 05-SEP-26.',
+        normalizedBody:
+            'Statement for HDFC Bank Credit Card ending 9137 for 15-AUG-26. Total Due: Rs. 15,400.00, Min Due: Rs. 770.00, Due Date: 05-SEP-26.',
+        smsTimestamp: now,
+      );
+      expect(pA, isNotNull);
+      expect(pA!.type, equals(TransactionType.bill));
+      expect(pA.cardLast4, equals('9137'));
+      expect(pA.billTotal, equals(15400.0));
+      expect(pA.billMinimum, equals(770.0));
+
+      // Format B
+      final pB = rule.parse(
+        rawSmsId: 'sms_h_b',
+        rawBody:
+            'E-Statement Generated! For HDFC Bank Credit Card 1355.Due date:04/NOV/2021.Total Due:Rs.3121.Min Due:Rs.3092.',
+        normalizedBody:
+            'E-Statement Generated! For HDFC Bank Credit Card 1355.Due date:04/NOV/2021.Total Due:Rs.3121.Min Due:Rs.3092.',
+        smsTimestamp: now,
+      );
+      expect(pB, isNotNull);
+      expect(pB!.type, equals(TransactionType.bill));
+      expect(pB.cardLast4, equals('1355'));
+      expect(pB.billTotal, equals(3121.0));
+
+      // Format C
+      final pC = rule.parse(
+        rawSmsId: 'sms_h_c',
+        rawBody:
+            'Payment of Rs 15400 is due on your HDFC Bank Card ending 9137 by 05-SEP-26. Min Due Rs 770.',
+        normalizedBody:
+            'Payment of Rs 15400 is due on your HDFC Bank Card ending 9137 by 05-SEP-26. Min Due Rs 770.',
+        smsTimestamp: now,
+      );
+      expect(pC, isNotNull);
+      expect(pC!.type, equals(TransactionType.bill));
+      expect(pC.cardLast4, equals('9137'));
+      expect(pC.billTotal, equals(15400.0));
+
+      // Format D
+      final pD = rule.parse(
+        rawSmsId: 'sms_h_d',
+        rawBody:
+            'Total Due on your HDFC Bank Card ending 9137 is Rs 15,400.00. Due on 25-09-2026.',
+        normalizedBody:
+            'Total Due on your HDFC Bank Card ending 9137 is Rs 15,400.00. Due on 25-09-2026.',
+        smsTimestamp: now,
+      );
+      expect(pD, isNotNull);
+      expect(pD!.type, equals(TransactionType.bill));
+      expect(pD.cardLast4, equals('9137'));
+      expect(pD.billTotal, equals(15400.0));
+    });
+
+    test('Parses HDFC Card Spend and Account Debit for Card Payment', () {
+      final rule = HdfcRules();
+      final pSpend = rule.parse(
+        rawSmsId: 'sms_h_sp',
+        rawBody:
+            'Spent Rs.450.00 on HDFC Bank Card 9137 on 05-09-2026 at Amazon. Avl lmt: Rs 1,50,000.',
+        normalizedBody:
+            'Spent Rs.450.00 on HDFC Bank Card 9137 on 05-09-2026 at Amazon. Avl lmt: Rs 1,50,000.',
+        smsTimestamp: now,
+      );
+      expect(pSpend, isNotNull);
+      expect(pSpend!.type, equals(TransactionType.purchase));
+      expect(pSpend.amount, equals(450.0));
+      expect(pSpend.merchant, equals('Amazon'));
+      expect(pSpend.availableLimit, equals(150000.0));
+
+      final pDebit = rule.parse(
+        rawSmsId: 'sms_h_db',
+        rawBody:
+            'INR 5,000.00 debited from HDFC Bank A/C XX0564 on 05-SEP-26 for credit card payment. Avl bal INR 51,473.36.',
+        normalizedBody:
+            'INR 5,000.00 debited from HDFC Bank A/C XX0564 on 05-SEP-26 for credit card payment. Avl bal INR 51,473.36.',
+        smsTimestamp: now,
+      );
+      expect(pDebit, isNotNull);
+      expect(pDebit!.type, equals(TransactionType.billPayment));
+      expect(pDebit.amount, equals(5000.0));
+      expect(pDebit.balance, equals(51473.36));
+    });
   });
 
   group('GenericRules Unit Tests', () {
@@ -472,6 +562,117 @@ Call 18002586161/SMS BLOCK CC 9137 to 7308080808''';
       expect(parsed.accountLast4, equals('1234'));
       expect(parsed.balance, equals(45000.0));
       expect(parsed.amount, equals(0.0));
+    });
+
+    test('Parses ICICI refunds, bill payments, and card spend', () {
+      // Refund
+      final pRef = rule.parse(
+        rawSmsId: 'sms_ic_ref',
+        rawBody:
+            'ICICI Bank Credit Card XX4000 credited/refunded with Rs 190.30 on 16-JUL-25.',
+        normalizedBody:
+            'ICICI Bank Credit Card XX4000 credited/refunded with Rs 190.30 on 16-JUL-25.',
+        smsTimestamp: now,
+      );
+      expect(pRef, isNotNull);
+      expect(pRef!.type, equals(TransactionType.refund));
+      expect(pRef.amount, equals(190.30));
+
+      // Merchant Refund
+      final pMRef = rule.parse(
+        rawSmsId: 'sms_ic_mref',
+        rawBody:
+            'AMAZON PAY IN E COMMERC refund of Rs 1,493.89 credited to ICICI Bank Credit Card XX4000 on 01-NOV-25. Revised total due Rs 0, minimum due Rs .00',
+        normalizedBody:
+            'AMAZON PAY IN E COMMERC refund of Rs 1,493.89 credited to ICICI Bank Credit Card XX4000 on 01-NOV-25. Revised total due Rs 0, minimum due Rs .00',
+        smsTimestamp: now,
+      );
+      expect(pMRef, isNotNull);
+      expect(pMRef!.type, equals(TransactionType.refund));
+      expect(pMRef.merchant, contains('AMAZON PAY'));
+      expect(pMRef.amount, equals(1493.89));
+
+      // Bill payment received
+      final pPay = rule.parse(
+        rawSmsId: 'sms_ic_pay',
+        rawBody:
+            'Payment of Rs 6,306.02 has been received on your ICICI Bank Credit Card XX4000 through Bharat Bill Payment System on 28-NOV-25.',
+        normalizedBody:
+            'Payment of Rs 6,306.02 has been received on your ICICI Bank Credit Card XX4000 through Bharat Bill Payment System on 28-NOV-25.',
+        smsTimestamp: now,
+      );
+      expect(pPay, isNotNull);
+      expect(pPay!.type, equals(TransactionType.billPayment));
+      expect(pPay.amount, equals(6306.02));
+
+      // Card spend
+      final pSpend = rule.parse(
+        rawSmsId: 'sms_ic_sp',
+        rawBody:
+            'INR 483.40 spent using ICICI Bank Card XX4000 on 18-Jan-26 on AMAZON PAY IN E. Avl Limit: INR 1,96,021.82.',
+        normalizedBody:
+            'INR 483.40 spent using ICICI Bank Card XX4000 on 18-Jan-26 on AMAZON PAY IN E. Avl Limit: INR 1,96,021.82.',
+        smsTimestamp: now,
+      );
+      expect(pSpend, isNotNull);
+      expect(pSpend!.type, equals(TransactionType.purchase));
+      expect(pSpend.amount, equals(483.40));
+      expect(pSpend.availableLimit, equals(196021.82));
+    });
+
+    test('Parses ICICI bill format A & C and account credits', () {
+      // Bill Format A
+      final pA = rule.parse(
+        rawSmsId: 'sms_ic_a',
+        rawBody:
+            'ICICI Bank Credit Card XX4000 Total of Rs 3,494.78 or minimum of Rs 180.00 is due by 05-FEB-26.',
+        normalizedBody:
+            'ICICI Bank Credit Card XX4000 Total of Rs 3,494.78 or minimum of Rs 180.00 is due by 05-FEB-26.',
+        smsTimestamp: now,
+      );
+      expect(pA, isNotNull);
+      expect(pA!.type, equals(TransactionType.bill));
+      expect(pA.billTotal, equals(3494.78));
+      expect(pA.billMinimum, equals(180.0));
+
+      // Bill Format C
+      final pC = rule.parse(
+        rawSmsId: 'sms_ic_c',
+        rawBody:
+            'Payment of Rs 3,494.78 is due on your ICICI Bank Card XX4000 by 05-FEB-26.',
+        normalizedBody:
+            'Payment of Rs 3,494.78 is due on your ICICI Bank Card XX4000 by 05-FEB-26.',
+        smsTimestamp: now,
+      );
+      expect(pC, isNotNull);
+      expect(pC!.type, equals(TransactionType.bill));
+      expect(pC.billTotal, equals(3494.78));
+
+      // Salary credit
+      final pSal = rule.parse(
+        rawSmsId: 'sms_ic_sal',
+        rawBody:
+            'Dear Customer, ICICI Bank Account XX1234 has been credited for Rs 50,000.00 on 05-Sep-26. Info: Salary. Avl Bal: INR 75,000.00.',
+        normalizedBody:
+            'Dear Customer, ICICI Bank Account XX1234 has been credited for Rs 50,000.00 on 05-Sep-26. Info: Salary. Avl Bal: INR 75,000.00.',
+        smsTimestamp: now,
+      );
+      expect(pSal, isNotNull);
+      expect(pSal!.type, equals(TransactionType.salary));
+      expect(pSal.amount, equals(50000.0));
+      expect(pSal.balance, equals(75000.0));
+
+      // Card payment debit
+      final pCardPay = rule.parse(
+        rawSmsId: 'sms_ic_cp',
+        rawBody:
+            'Dear Customer, ICICI Bank Account XX1234 has been debited for Rs 1,500.00 on 05-Sep-26. Info: credit card payment. Avl Bal: INR 25,000.00.',
+        normalizedBody:
+            'Dear Customer, ICICI Bank Account XX1234 has been debited for Rs 1,500.00 on 05-Sep-26. Info: credit card payment. Avl Bal: INR 25,000.00.',
+        smsTimestamp: now,
+      );
+      expect(pCardPay, isNotNull);
+      expect(pCardPay!.type, equals(TransactionType.billPayment));
     });
   });
 

@@ -119,7 +119,10 @@ class IciciRules extends BankRule {
     // Format A: "ICICI Bank Credit Card XX4000... Total of Rs 3,494.78 or minimum of Rs 180.00 is due by 05-FEB-26."
     // Format B: "Total amount due on your ICICI Bank Credit Card XX4000 is Rs 3,494.78 payable by 05-FEB-26. Min due Rs 180."
     // Format C: "Payment of Rs 3,494.78 is due on your ICICI Bank Card XX4000 by 05-FEB-26."
-    final isBill = normalizedBody.toLowerCase().contains('credit card') &&
+    final isBill = (normalizedBody.toLowerCase().contains('credit card') ||
+            (normalizedBody.toLowerCase().contains('card') &&
+                (normalizedBody.toLowerCase().contains('due') ||
+                    normalizedBody.toLowerCase().contains('statement')))) &&
         (normalizedBody.toLowerCase().contains('total') ||
             normalizedBody.toLowerCase().contains('minimum') ||
             normalizedBody.toLowerCase().contains('statement') ||
@@ -129,7 +132,7 @@ class IciciRules extends BankRule {
 
     if (isBill) {
       final cardMatch = RegExp(
-        r'Credit\s+Card\s*(?:no\.?|[Xx*]+|ending\s*)?\s*(\d{4})',
+        r'(?:Credit\s+)?Card\s*(?:no\.?|[Xx*]+|ending\s*)?\s*(\d{4})',
         caseSensitive: false,
       ).firstMatch(normalizedBody);
 
