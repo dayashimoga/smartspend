@@ -15,6 +15,8 @@ class BillsScreen extends ConsumerStatefulWidget {
 }
 
 class _BillsScreenState extends ConsumerState<BillsScreen> {
+  String _periodTab =
+      'Current Month'; // 'Current Month', 'Previous Months', 'All'
   String _statusFilter =
       'All'; // 'All', 'Upcoming', 'Due Today', 'Overdue', 'Partial', 'Paid'
 
@@ -36,6 +38,59 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
             onPeriodChanged: (newPeriod) {
               ref.read(selectedTimePeriodProvider.notifier).state = newPeriod;
             },
+          ),
+
+          // Period Tab Bar (Current Month vs Previous Months vs All)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
+              ),
+              child: Row(
+                children: ['Current Month', 'Previous Months', 'All History']
+                    .map((tab) {
+                  final isSelected = _periodTab == tab;
+                  return Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        setState(() {
+                          _periodTab = tab;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          tab,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.lightTextSecondary),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
 
           // Status Filter Chips
@@ -65,7 +120,21 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
           Expanded(
             child: billsAsync.when(
               data: (bills) {
+                final now = DateTime.now();
                 var filtered = bills.where((bill) {
+                  // Period Tab Filter
+                  if (_periodTab == 'Current Month') {
+                    final isCurrentMonth = bill.dueDate.year == now.year &&
+                        bill.dueDate.month == now.month;
+                    final isRecentCycle = bill.dueDate
+                        .isAfter(now.subtract(const Duration(days: 30)));
+                    if (!isCurrentMonth && !isRecentCycle) return false;
+                  } else if (_periodTab == 'Previous Months') {
+                    final isPast = bill.dueDate
+                        .isBefore(now.subtract(const Duration(days: 30)));
+                    if (!isPast) return false;
+                  }
+
                   if (_statusFilter == 'All') return true;
                   switch (_statusFilter) {
                     case 'Upcoming':

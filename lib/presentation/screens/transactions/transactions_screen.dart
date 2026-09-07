@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/amount_parser.dart';
+import '../../../data/repositories/transaction_repository.dart';
 import '../../../domain/entities/parsed_transaction.dart';
 import '../../../domain/enums/transaction_type.dart';
 import '../../providers/app_providers.dart';
@@ -16,6 +18,8 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String _searchQuery = '';
+  String _instrumentView =
+      'All Accounts'; // 'All Accounts', 'Bank Accounts', 'Credit Cards'
   TransactionType? _selectedType;
 
   @override
@@ -38,9 +42,63 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             },
           ),
 
+          // Instrument View Switcher (All vs Bank Accounts vs Credit Cards)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                ),
+              ),
+              child: Row(
+                children: ['All Accounts', 'Bank Accounts', 'Credit Cards']
+                    .map((view) {
+                  final isSelected = _instrumentView == view;
+                  return Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        setState(() {
+                          _instrumentView = view;
+                          _selectedType = null;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          view,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.lightTextSecondary),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
           // Search Box
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search merchant, category, reference...',
@@ -78,7 +136,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
 
-          // Filter Chips
+          // Filter Chips tailored to current view
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -86,30 +144,58 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               children: [
                 _filterChip('All', null),
                 const SizedBox(width: 8),
-                _filterChip('Debits', TransactionType.debit),
-                const SizedBox(width: 8),
-                _filterChip('Card Spends', TransactionType.purchase),
-                const SizedBox(width: 8),
+                if (_instrumentView != 'Credit Cards') ...[
+                  _filterChip('Debits', TransactionType.debit),
+                  const SizedBox(width: 8),
+                ],
+                if (_instrumentView != 'Bank Accounts') ...[
+                  _filterChip('Card Spends', TransactionType.purchase),
+                  const SizedBox(width: 8),
+                ],
                 _filterChip('Credits', TransactionType.credit),
                 const SizedBox(width: 8),
-                _filterChip('Salary', TransactionType.salary),
-                const SizedBox(width: 8),
-                _filterChip('UPI', TransactionType.upi),
-                const SizedBox(width: 8),
-                _filterChip('ATM', TransactionType.atm),
-                const SizedBox(width: 8),
-                _filterChip('FASTag', TransactionType.fastag),
+                if (_instrumentView != 'Credit Cards') ...[
+                  _filterChip('Salary', TransactionType.salary),
+                  const SizedBox(width: 8),
+                  _filterChip('UPI', TransactionType.upi),
+                  const SizedBox(width: 8),
+                  _filterChip('ATM', TransactionType.atm),
+                  const SizedBox(width: 8),
+                  _filterChip('FASTag', TransactionType.fastag),
+                ],
+                if (_instrumentView == 'Credit Cards') ...[
+                  _filterChip('Refunds', TransactionType.refund),
+                  const SizedBox(width: 8),
+                  _filterChip('Payments', TransactionType.billPayment),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 8),
 
-          // Transactions List
+          // Transactions List & Summary Totals
           Expanded(
             child: txnsAsync.when(
-              data: (txns) {
-                // Apply local filters
+              data: (rawTxns) {
+                // Deduplicate items
+                final txns = TransactionRepository.deduplicate(rawTxns);
+
+                // Apply Instrument View Filter
                 var filtered = txns;
+                if (_instrumentView == 'Bank Accounts') {
+                  filtered = filtered.where((t) {
+                    final isCard = t.type == TransactionType.purchase ||
+                        (t.cardLast4 != null && t.cardLast4!.isNotEmpty);
+                    return !isCard;
+                  }).toList();
+                } else if (_instrumentView == 'Credit Cards') {
+                  filtered = filtered.where((t) {
+                    final isCard = t.type == TransactionType.purchase ||
+                        (t.cardLast4 != null && t.cardLast4!.isNotEmpty);
+                    return isCard;
+                  }).toList();
+                }
+
+                // Apply type filter
                 if (_selectedType != null) {
                   if (_selectedType == TransactionType.purchase) {
                     filtered = filtered
@@ -124,6 +210,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         filtered.where((t) => t.type == _selectedType).toList();
                   }
                 }
+
+                // Apply search query
                 if (_searchQuery.isNotEmpty) {
                   filtered = filtered.where((t) {
                     final title = t.displayTitle.toLowerCase();
@@ -135,12 +223,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   }).toList();
                 }
 
+                // Calculate Totals for this unique filtered set
+                final totalSpent = filtered
+                    .where((t) => t.type.isExpense && !t.isExcluded)
+                    .fold(0.0, (sum, t) => sum + t.amount);
+                final totalIncome = filtered
+                    .where((t) => t.type.isIncome && !t.isExcluded)
+                    .fold(0.0, (sum, t) => sum + t.amount);
+
                 if (filtered.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off,
+                        Icon(Icons.receipt_long_outlined,
                             size: 48,
                             color: isDark
                                 ? AppColors.darkTextMuted
@@ -158,15 +254,81 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final txn = filtered[index];
-                    return TransactionTile(
-                      transaction: txn,
-                      onTap: () => _showTransactionDetail(context, txn),
-                    );
-                  },
+                return Column(
+                  children: [
+                    // Summary Total Bar for Current Filtered Set
+                    Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.lightSurface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${filtered.length} Unique items',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.lightTextSecondary,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                'Spent: ${AmountParser.format(totalSpent, currency: 'INR')}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.expense,
+                                ),
+                              ),
+                              if (totalIncome > 0) ...[
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Credits: ${AmountParser.format(totalIncome, currency: 'INR')}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.income,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // List of Transactions
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final txn = filtered[index];
+                          return TransactionTile(
+                            transaction: txn,
+                            onTap: () {
+                              _showTransactionDetail(context, txn);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),

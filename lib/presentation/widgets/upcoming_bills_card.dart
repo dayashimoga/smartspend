@@ -18,12 +18,17 @@ class UpcomingBillsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Filter to active pending bills (unpaid, dueToday, partial, overdue)
-    final pendingBills = bills
-        .where((b) =>
-            b.effectiveStatus != BillStatus.paid &&
-            b.effectiveStatus != BillStatus.noPaymentRequired)
-        .toList();
+    final now = DateTime.now();
+    // Filter to active pending bills for current cycle / upcoming period (exclude last year / ancient bills)
+    final cutoffDate =
+        DateTime(now.year, now.month, 1).subtract(const Duration(days: 15));
+    final pendingBills = bills.where((b) {
+      if (b.effectiveStatus == BillStatus.paid ||
+          b.effectiveStatus == BillStatus.noPaymentRequired) {
+        return false;
+      }
+      return b.dueDate.isAfter(cutoffDate);
+    }).toList();
 
     // Sort by nearest due date first
     pendingBills.sort((a, b) => a.dueDate.compareTo(b.dueDate));

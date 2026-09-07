@@ -19,7 +19,7 @@ class SummaryCards extends StatelessWidget {
 
     return Column(
       children: [
-        // Net Cashflow Hero Card
+        // Bank Balances Hero Card
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(20),
@@ -46,8 +46,11 @@ class SummaryCards extends StatelessWidget {
                 children: [
                   Row(
                     children: [
+                      const Icon(Icons.account_balance,
+                          color: Colors.white70, size: 16),
+                      const SizedBox(width: 6),
                       const Text(
-                        'Net Cashflow',
+                        'Bank Balances',
                         style: TextStyle(
                             color: Colors.white70,
                             fontSize: 13,
@@ -80,8 +83,10 @@ class SummaryCards extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                AmountParser.format(summary.netCashFlow,
-                    currency: summary.currency),
+                summary.totalAccountBalance != null
+                    ? AmountParser.format(summary.totalAccountBalance!,
+                        currency: summary.currency)
+                    : 'Unavailable',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -154,7 +159,7 @@ class SummaryCards extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Row(
             children: [
-              // Total Bank Balances
+              // Net Cashflow Card
               Expanded(
                 child: Card(
                   child: Padding(
@@ -164,14 +169,14 @@ class SummaryCards extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.account_balance,
+                            Icon(Icons.swap_vert_circle_outlined,
                                 size: 16,
                                 color: isDark
                                     ? AppColors.darkTextSecondary
                                     : AppColors.lightTextSecondary),
                             const SizedBox(width: 6),
                             Text(
-                              'Bank Balances',
+                              'Net Cashflow',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
@@ -186,17 +191,14 @@ class SummaryCards extends StatelessWidget {
                         Row(
                           children: [
                             Text(
-                              summary.totalAccountBalance != null
-                                  ? AmountParser.format(
-                                      summary.totalAccountBalance!,
-                                      currency: summary.currency)
-                                  : 'Unavailable',
+                              AmountParser.format(summary.netCashFlow,
+                                  currency: summary.currency),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? AppColors.darkTextPrimary
-                                    : AppColors.lightTextPrimary,
+                                color: summary.netCashFlow >= 0
+                                    ? AppColors.income
+                                    : AppColors.expense,
                               ),
                             ),
                             if (isUpdating) ...[

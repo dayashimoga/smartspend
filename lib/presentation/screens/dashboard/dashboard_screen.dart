@@ -1,20 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/datasources/sms_datasource.dart';
+import '../../../core/utils/amount_parser.dart';
+import '../../../data/repositories/transaction_repository.dart';
+import '../../../domain/entities/parsed_transaction.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/budget_card.dart';
 import '../../widgets/ingestion_progress_banner.dart';
 import '../../widgets/summary_cards.dart';
 import '../../widgets/time_period_selector.dart';
 import '../../widgets/transaction_tile.dart';
 import '../../widgets/upcoming_bills_card.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  String _recentPeriod = 'Daily'; // 'Daily', 'Weekly', 'Monthly', 'Yearly'
+
+  double _calculatePeriodTotal(List<ParsedTransaction> txns, String period) {
+    final now = DateTime.now();
+    double total = 0.0;
+    for (final t in txns) {
+      if (!t.type.isExpense || t.isExcluded) continue;
+      final d = t.transactionDate;
+      if (period == 'Daily') {
+        if (d.year == now.year && d.month == now.month && d.day == now.day) {
+          total += t.amount;
+        }
+      } else if (period == 'Weekly') {
+        if (now.difference(d).inDays < 7 && !d.isAfter(now)) {
+          total += t.amount;
+        }
+      } else if (period == 'Monthly') {
+        if (d.year == now.year && d.month == now.month) {
+          total += t.amount;
+        }
+      } else if (period == 'Yearly') {
+        if (d.year == now.year) {
+          total += t.amount;
+        }
+      }
+    }
+    return total;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final period = ref.watch(selectedTimePeriodProvider);
     final summaryAsync = ref.watch(filteredFinancialSummaryProvider);
     final txnsAsync = ref.watch(filteredTransactionsProvider);
@@ -38,7 +76,10 @@ class DashboardScreen extends ConsumerWidget {
                   color: AppColors.primary, size: 20),
             ),
             const SizedBox(width: 10),
-            const Text('SmartSpend'),
+            const Text(
+              'SmartSpend',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ],
         ),
         actions: [
@@ -55,46 +96,42 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: isSyncing || ingestionProgress.isBusy
                 ? null
                 : () async {
+                    ref.read(isSyncingProvider.notifier).state = true;
                     try {
-                      final hasPerm = await SmsDatasource.hasPermissions();
-                      if (!hasPerm) {
-                        await SmsDatasource.requestPermissions();
-                      }
-                      await ingestionNotifier.startSync();
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Sync notice: $e')),
-                        );
-                      }
+                      final service =
+                          ref.read(incrementalIngestionServiceProvider);
+                      await service.startIngestion();
+                    } finally {
+                      ref.read(isSyncingProvider.notifier).state = false;
+                      ref.invalidate(filteredFinancialSummaryProvider);
+                      ref.invalidate(filteredTransactionsProvider);
+                      ref.invalidate(recentTransactionsProvider);
+                      ref.invalidate(allTransactionsProvider);
+                      ref.invalidate(filteredBillsProvider);
+                      ref.invalidate(filteredAccountsProvider);
+                      ref.invalidate(filteredCardsProvider);
+                      ref.invalidate(monthlyBudgetProvider);
                     }
                   },
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/settings'),
+            tooltip: 'Settings',
+            onPressed: () => context.go('/settings'),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(financialSummaryProvider);
-          ref.invalidate(filteredFinancialSummaryProvider);
-          ref.invalidate(recentTransactionsProvider);
-          ref.invalidate(filteredTransactionsProvider);
-          ref.invalidate(filteredBillsProvider);
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Non-blocking Ingestion Progress Banner
+            // Ingestion Progress Banner
             IngestionProgressBanner(
               progress: ingestionProgress,
               onPause: ingestionNotifier.pause,
               onResume: ingestionNotifier.resume,
               onCancel: ingestionNotifier.cancel,
               onRetry: ingestionNotifier.retry,
-              onDismiss: ingestionNotifier.dismiss,
             ),
 
             // Time Period Selector
@@ -113,8 +150,6 @@ class DashboardScreen extends ConsumerWidget {
                     summary: summary,
                     isUpdating: ingestionProgress.isBusy || isSyncing,
                   ),
-
-                  // Needs Review alert banner if applicable
                   if (summary.needsReviewCount > 0)
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -164,6 +199,9 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
 
+            // Monthly Budget Card
+            const BudgetCard(),
+
             // Prominent Upcoming Bills Section before Recent Transactions
             billsAsync.when(
               data: (bills) => UpcomingBillsCard(
@@ -176,7 +214,7 @@ class DashboardScreen extends ConsumerWidget {
 
             // Recent Transactions Section Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -198,10 +236,87 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
 
-            // Recent Transactions List
+            // Period Total Badges & Timeframe Switcher
             txnsAsync.when(
               data: (allTxns) {
-                final txns = allTxns.take(10).toList();
+                final deduplicated = TransactionRepository.deduplicate(allTxns);
+                final periodTotal =
+                    _calculatePeriodTotal(deduplicated, _recentPeriod);
+
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        // Timeframe selector chips
+                        ...['Daily', 'Weekly', 'Monthly', 'Yearly'].map((p) {
+                          final isSelected = _recentPeriod == p;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: ChoiceChip(
+                              label: Text(p,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark
+                                            ? AppColors.darkTextSecondary
+                                            : AppColors.lightTextSecondary),
+                                  )),
+                              selected: isSelected,
+                              selectedColor: AppColors.primary,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 0),
+                              onSelected: (_) {
+                                setState(() {
+                                  _recentPeriod = p;
+                                });
+                              },
+                            ),
+                          );
+                        }),
+                        const SizedBox(width: 8),
+
+                        // Period Total Display
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.expense.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color:
+                                    AppColors.expense.withValues(alpha: 0.2)),
+                          ),
+                          child: Text(
+                            '$_recentPeriod Total: ${AmountParser.format(periodTotal, currency: 'INR')}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.expense,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+
+            // Recent Transactions List (Grouped by Day)
+            txnsAsync.when(
+              data: (allTxns) {
+                final deduplicated = TransactionRepository.deduplicate(allTxns);
+                final txns = deduplicated.take(15).toList();
                 if (txns.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.all(32),
@@ -221,32 +336,86 @@ class DashboardScreen extends ConsumerWidget {
                                     ? AppColors.darkTextSecondary
                                     : AppColors.lightTextSecondary),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Switch time period or tap "Sync SMS" above',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? AppColors.darkTextMuted
-                                    : AppColors.lightTextMuted),
-                          ),
                         ],
                       ),
                     ),
                   );
                 }
 
+                // Group transactions by calendar day
+                final now = DateTime.now();
+                final grouped = <String, List<ParsedTransaction>>{};
+                for (final t in txns) {
+                  final key =
+                      DateFormat('yyyy-MM-dd').format(t.transactionDate);
+                  grouped.putIfAbsent(key, () => []).add(t);
+                }
+
                 return ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: txns.length,
-                  itemBuilder: (context, index) {
-                    final txn = txns[index];
-                    return TransactionTile(
-                      transaction: txn,
-                      onTap: () {
-                        _showTransactionDetail(context, txn);
-                      },
+                  itemCount: grouped.length,
+                  itemBuilder: (context, groupIndex) {
+                    final dateKey = grouped.keys.elementAt(groupIndex);
+                    final dayTxns = grouped[dateKey]!;
+                    final firstDate = dayTxns.first.transactionDate;
+
+                    final isToday = firstDate.year == now.year &&
+                        firstDate.month == now.month &&
+                        firstDate.day == now.day;
+                    final isYesterday = firstDate.year == now.year &&
+                        firstDate.month == now.month &&
+                        firstDate.day == now.day - 1;
+
+                    final dateLabel = isToday
+                        ? 'Today, ${DateFormat('dd MMM').format(firstDate)}'
+                        : (isYesterday
+                            ? 'Yesterday, ${DateFormat('dd MMM').format(firstDate)}'
+                            : DateFormat('EEE, dd MMM yyyy').format(firstDate));
+
+                    // Day expense total
+                    final dayTotal = dayTxns
+                        .where((t) => t.type.isExpense && !t.isExcluded)
+                        .fold(0.0, (sum, t) => sum + t.amount);
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Day Header
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                dateLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.lightTextSecondary,
+                                ),
+                              ),
+                              if (dayTotal > 0)
+                                Text(
+                                  'Day Total: ${AmountParser.format(dayTotal, currency: 'INR')}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? AppColors.darkTextMuted
+                                        : AppColors.lightTextMuted,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        ...dayTxns.map((txn) => TransactionTile(
+                              transaction: txn,
+                              onTap: () => _showTransactionDetail(context, txn),
+                            )),
+                      ],
                     );
                   },
                 );

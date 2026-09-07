@@ -356,15 +356,21 @@ class IncrementalIngestionService {
             timestamp: timestamp,
           );
 
-          if (parsed.confidence == Confidence.unparsed &&
-              (parsed.category == 'OTP' || parsed.category == 'Promotional')) {
+          final isNonFinancial = (parsed.confidence == Confidence.unparsed &&
+                  (parsed.category == 'OTP' ||
+                      parsed.category == 'Promotional' ||
+                      (parsed.amount <= 0 && parsed.balance == null))) ||
+              (parsed.type == TransactionType.unknown &&
+                  parsed.amount <= 0 &&
+                  parsed.balance == null);
+
+          if (isNonFinancial) {
             ignoredCount++;
           } else {
             financialCount++;
+            batchParsedTxns.add(parsed);
+            nonDuplicateTxns.add(parsed);
           }
-
-          batchParsedTxns.add(parsed);
-          nonDuplicateTxns.add(parsed);
 
           latestSmsId = rawSmsId;
           latestFingerprint = fingerprint;
@@ -389,12 +395,14 @@ class IncrementalIngestionService {
 
           finalTxnsToCommit.add(parsed);
 
-          if (parsed.confidence.needsReview) {
+          if (parsed.confidence.needsReview &&
+              (parsed.amount > 0 || parsed.balance != null)) {
             reviewCount++;
           }
           if (parsed.confidence == Confidence.unparsed &&
               parsed.category != 'OTP' &&
-              parsed.category != 'Promotional') {
+              parsed.category != 'Promotional' &&
+              (parsed.amount > 0 || parsed.balance != null)) {
             failedCount++;
           }
           transactionsCount++;

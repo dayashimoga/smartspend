@@ -126,7 +126,10 @@ class IngestSmsUseCase {
       await _txnRepo.saveTransaction(parsed);
       newlyIngested++;
 
-      if (parsed.confidence.needsReview) {
+      if (parsed.confidence.needsReview &&
+          (parsed.amount > 0 || parsed.balance != null) &&
+          parsed.category != 'OTP' &&
+          parsed.category != 'Promotional') {
         needsReviewCount++;
       }
 

@@ -134,7 +134,42 @@ class TransactionRepository implements ITransactionRepository {
       offset: offset,
     );
 
-    return res.map((m) => ParsedTransaction.fromMap(m)).toList();
+    final txns = res.map((m) => ParsedTransaction.fromMap(m)).toList();
+    return deduplicate(txns);
+  }
+
+  /// Deduplicates transactions by matching unique transaction references
+  /// or identical bank, amount, account/card, and 5-minute time window.
+  static List<ParsedTransaction> deduplicate(List<ParsedTransaction> txns) {
+    final seenRefs = <String>{};
+    final seenSignatures = <String>{};
+    final result = <ParsedTransaction>[];
+
+    for (final t in txns) {
+      // 1. Check explicit reference / RRN / UPI ref
+      final ref = t.reference ?? t.rrn ?? t.upiRef;
+      if (ref != null && ref.trim().length >= 6) {
+        final cleanRef = ref.trim().toLowerCase();
+        if (seenRefs.contains(cleanRef)) {
+          continue; // Skip duplicate
+        }
+        seenRefs.add(cleanRef);
+      }
+
+      // 2. Fuzzy signature: bank_amount_instrument_timeBucket
+      final instrument = t.cardLast4 ?? t.accountLast4 ?? 'none';
+      final timeBucket =
+          t.transactionDate.millisecondsSinceEpoch ~/ (5 * 60 * 1000);
+      final sig =
+          '${t.bank.name}_${t.amount.toStringAsFixed(2)}_${instrument}_$timeBucket';
+      if (seenSignatures.contains(sig)) {
+        continue; // Skip duplicate
+      }
+      seenSignatures.add(sig);
+
+      result.add(t);
+    }
+    return result;
   }
 
   @override
@@ -142,11 +177,18 @@ class TransactionRepository implements ITransactionRepository {
     final db = await _dbHelper.database;
     final res = await db.query(
       'parsed_transactions',
-      where: 'confidence IN (?, ?)',
-      whereArgs: [Confidence.low.name, Confidence.unparsed.name],
+      where:
+          'confidence IN (?, ?) AND (amount > 0 OR balance IS NOT NULL) AND category NOT IN (?, ?)',
+      whereArgs: [
+        Confidence.low.name,
+        Confidence.unparsed.name,
+        'OTP',
+        'Promotional',
+      ],
       orderBy: 'transaction_date DESC',
     );
-    return res.map((m) => ParsedTransaction.fromMap(m)).toList();
+    final txns = res.map((m) => ParsedTransaction.fromMap(m)).toList();
+    return deduplicate(txns);
   }
 
   @override
@@ -258,6 +300,24 @@ class TransactionRepository implements ITransactionRepository {
       }
 
       if (anyReliable) {
+        totalAcctBal = sum;
+      }
+    }
+
+    if (endDate == null && (totalAcctBal == null || totalAcctBal == 0.0)) {
+      final latestTxnWithBal = await db.rawQuery('''
+        SELECT balance FROM (
+          SELECT balance, 
+                 ROW_NUMBER() OVER (PARTITION BY bank, account_last4 ORDER BY COALESCE(sms_received_at, transaction_date) DESC, id DESC) as rn
+          FROM parsed_transactions 
+          WHERE balance IS NOT NULL AND account_last4 IS NOT NULL
+        ) WHERE rn = 1
+      ''');
+      if (latestTxnWithBal.isNotEmpty) {
+        double sum = 0.0;
+        for (final row in latestTxnWithBal) {
+          sum += (row['balance'] as num).toDouble();
+        }
         totalAcctBal = sum;
       }
     }

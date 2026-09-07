@@ -18,6 +18,7 @@ import '../../data/repositories/transaction_repository.dart';
 import '../../data/parsers/reconciler.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/bill.dart';
+import '../../domain/entities/budget.dart';
 import '../../domain/entities/credit_card.dart';
 import '../../domain/entities/fastag_record.dart';
 import '../../domain/entities/financial_summary.dart';
@@ -344,3 +345,47 @@ final filteredCardsProvider = FutureProvider<List<CreditCard>>((ref) async {
   final period = ref.watch(selectedTimePeriodProvider);
   return repo.getCardsAsOf(period.endDate);
 });
+
+// Monthly Budget Provider (for the current month/year)
+final monthlyBudgetProvider = FutureProvider<Budget?>((ref) async {
+  final repo = ref.watch(budgetRepoProvider);
+  final now = DateTime.now();
+  final budgets = await repo.getBudgetsForMonth(now.month, now.year);
+  if (budgets.isEmpty) return null;
+
+  // Read current month's actual expenses
+  final summary = await ref.watch(filteredFinancialSummaryProvider.future);
+  final currentSpend = summary.totalExpense;
+
+  return budgets.first.copyWith(currentSpend: currentSpend);
+});
+
+class BudgetController extends StateNotifier<AsyncValue<void>> {
+  final Ref _ref;
+  BudgetController(this._ref) : super(const AsyncValue.data(null));
+
+  Future<void> setBudget(double limit) async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = _ref.read(budgetRepoProvider);
+      final now = DateTime.now();
+      final budget = Budget(
+        id: 'budget_${now.year}_${now.month}',
+        category: 'Total',
+        monthlyLimit: limit,
+        currency: 'INR',
+        month: now.month,
+        year: now.year,
+      );
+      await repo.upsertBudget(budget);
+      _ref.invalidate(monthlyBudgetProvider);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+}
+
+final budgetControllerProvider =
+    StateNotifierProvider<BudgetController, AsyncValue<void>>(
+        (ref) => BudgetController(ref));

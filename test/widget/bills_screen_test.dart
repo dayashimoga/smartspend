@@ -120,5 +120,38 @@ void main() {
       expect(find.textContaining('Error loading bills: DB_READ_ERROR'),
           findsOneWidget);
     });
+
+    testWidgets('Toggles period switcher tabs in BillsScreen', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            filteredBillsProvider
+                .overrideWith((ref) => Future.value(sampleBills)),
+          ],
+          child: const MaterialApp(
+            home: BillsScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Current Month'), findsOneWidget);
+      expect(find.text('Previous Months'), findsOneWidget);
+      expect(find.text('All History'), findsOneWidget);
+
+      // Tap Previous Months
+      await tester.tap(find.text('Previous Months'));
+      await tester.pump();
+
+      // Tap All History
+      await tester.tap(find.text('All History'));
+      await tester.pump();
+
+      // Tap Current Month
+      await tester.tap(find.text('Current Month'));
+      await tester.pump();
+    });
   });
 }

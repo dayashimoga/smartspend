@@ -129,6 +129,56 @@ void main() {
       expect(find.textContaining('Spending by Category'), findsNothing);
     });
 
+    testWidgets('Toggles timeframe spend breakdown chips in InsightsScreen',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            financialSummaryProvider
+                .overrideWith((ref) => Future.value(fullSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(fullSummary)),
+            allTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+          ],
+          child: const MaterialApp(
+            home: InsightsScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.textContaining('Spend Totals'), findsOneWidget);
+      expect(find.text('Day-wise'), findsOneWidget);
+      expect(find.text('Week-wise'), findsOneWidget);
+      expect(find.text('Month-wise'), findsOneWidget);
+      expect(find.text('Year-wise'), findsOneWidget);
+
+      // Tap Week-wise
+      await tester.tap(find.text('Week-wise'));
+      await tester.pump();
+
+      // Tap Month-wise
+      await tester.tap(find.text('Month-wise'));
+      await tester.pump();
+
+      // Tap Year-wise
+      await tester.tap(find.text('Year-wise'));
+      await tester.pump();
+
+      // Tap Day-wise
+      await tester.tap(find.text('Day-wise'));
+      await tester.pump();
+    });
+
     testWidgets('Renders error state gracefully', (tester) async {
       await tester.pumpWidget(
         ProviderScope(

@@ -192,5 +192,45 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.textContaining('Error: DB_READ_ERROR'), findsOneWidget);
     });
+
+    testWidgets(
+        'Toggles instrument view switcher between All Accounts, Bank Accounts, and Credit Cards',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            allTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+          ],
+          child: const MaterialApp(
+            home: TransactionsScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('All Accounts'), findsOneWidget);
+      expect(find.text('Bank Accounts'), findsOneWidget);
+      expect(find.text('Credit Cards'), findsOneWidget);
+
+      // Verify unique items banner
+      expect(find.textContaining('Unique items'), findsOneWidget);
+
+      // Switch to Bank Accounts
+      await tester.tap(find.text('Bank Accounts'));
+      await tester.pump();
+
+      // Switch to Credit Cards
+      await tester.tap(find.text('Credit Cards'));
+      await tester.pump();
+
+      // Switch back to All Accounts
+      await tester.tap(find.text('All Accounts'));
+      await tester.pump();
+    });
   });
 }

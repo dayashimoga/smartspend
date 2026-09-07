@@ -240,5 +240,57 @@ void main() {
 
       expect(find.text('Confidence'), findsNothing);
     });
+
+    testWidgets(
+        'Toggles recent transactions timeframe chips on DashboardScreen',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            financialSummaryProvider
+                .overrideWith((ref) => Future.value(fullSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(fullSummary)),
+            recentTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredBillsProvider
+                .overrideWith((ref) => Future.value(sampleBills)),
+          ],
+          child: const MaterialApp(
+            home: DashboardScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Daily'), findsOneWidget);
+      expect(find.text('Weekly'), findsOneWidget);
+      expect(find.text('Monthly'), findsOneWidget);
+      expect(find.text('Yearly'), findsOneWidget);
+
+      // Tap Weekly
+      await tester.tap(find.text('Weekly'));
+      await tester.pump();
+
+      // Tap Monthly
+      await tester.tap(find.text('Monthly'));
+      await tester.pump();
+
+      // Tap Yearly
+      await tester.tap(find.text('Yearly'));
+      await tester.pump();
+
+      // Tap Daily
+      await tester.tap(find.text('Daily'), warnIfMissed: false);
+      await tester.pump();
+    });
   });
 }
