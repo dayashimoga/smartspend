@@ -21,15 +21,20 @@ class InstitutionDetector {
     if (s.contains('RBL')) return Bank.rbl;
     if (s.contains('KOTAK')) return Bank.kotak;
 
-    // 2. Check body content
-    if (b.contains('HDFC BANK') || b.contains('HDFC')) return Bank.hdfc;
-    if (b.contains('ICICI BANK') || b.contains('ICICI')) return Bank.icici;
-    if (b.contains('AXIS BANK') || b.contains('AXIS')) return Bank.axis;
+    // 2. Check body content (prioritize explicit bank/card mentions)
+    if (b.contains('HDFC BANK') || b.contains('HDFC CARD')) return Bank.hdfc;
+    if (b.contains('ICICI BANK') || b.contains('ICICI CARD')) return Bank.icici;
+    if (b.contains('AXIS BANK') || b.contains('AXIS CARD')) return Bank.axis;
     if (b.contains('SBI CREDIT CARD') ||
         b.contains('STATE BANK') ||
-        b.contains('SBI')) {
+        b.contains('SBI CARD') ||
+        b.contains('SBI BANK')) {
       return Bank.sbi;
     }
+    if (b.contains('HDFC')) return Bank.hdfc;
+    if (b.contains('ICICI')) return Bank.icici;
+    if (b.contains('AXIS')) return Bank.axis;
+    if (b.contains('SBI')) return Bank.sbi;
     if (b.contains('HSBC')) return Bank.hsbc;
     if (b.contains('YES BANK') || b.contains('YESBANK')) return Bank.yesBank;
     if (b.contains('IDFC FIRST') || b.contains('IDFC')) return Bank.idfcFirst;

@@ -210,7 +210,11 @@ final recentTransactionsProvider =
 final allTransactionsProvider =
     FutureProvider.autoDispose<List<ParsedTransaction>>((ref) async {
   final repo = ref.watch(txnRepoProvider);
-  return repo.getAllTransactions(limit: 200);
+  return repo.getAllTransactions(
+    limit: 200,
+    includeBills: false,
+    includePureBalances: false,
+  );
 });
 
 final needsReviewTransactionsProvider =
@@ -263,12 +267,15 @@ final filteredTransactionsProvider =
     limit: 500,
     startDate: period.startDate,
     endDate: period.endDate,
+    includeBills: false,
+    includePureBalances: false,
   );
 });
 
 // Reconciled and Filtered Bills Provider
 final filteredBillsProvider = FutureProvider<List<Bill>>((ref) async {
   final billRepo = ref.watch(billRepoProvider);
+  final cardRepo = ref.watch(cardRepoProvider);
   final txnRepo = ref.watch(txnRepoProvider);
   final period = ref.watch(selectedTimePeriodProvider);
 
@@ -276,9 +283,52 @@ final filteredBillsProvider = FutureProvider<List<Bill>>((ref) async {
     period.startDate.subtract(const Duration(days: 30)),
     period.endDate.add(const Duration(days: 60)),
   );
+  final allBills = await billRepo.getAllBills();
+  final cards = await cardRepo.getAllCards();
   final allTxns = await txnRepo.getAllTransactions(limit: 500);
 
-  final reconciled = Reconciler.reconcileBillsWithPayments(rawBills, allTxns);
+  final billsMap = <String, Bill>{};
+  for (final b in rawBills) {
+    billsMap[b.id] = b;
+  }
+  // Include all pending (unpaid, dueToday, partial, overdue) bills regardless of period
+  for (final b in allBills) {
+    if (b.effectiveStatus != BillStatus.paid &&
+        b.effectiveStatus != BillStatus.noPaymentRequired) {
+      billsMap[b.id] = b;
+    }
+  }
+
+  // Identify bills for any detected card with statementDue or currentDue
+  for (final card in cards) {
+    final dueAmt = card.statementDue ?? card.outstanding ?? 0.0;
+    if (dueAmt > 0) {
+      final hasMatchingBill = billsMap.values.any((b) =>
+          b.bank == card.bank &&
+          b.cardLast4 == card.last4 &&
+          (b.effectiveStatus != BillStatus.paid &&
+              b.effectiveStatus != BillStatus.noPaymentRequired));
+
+      if (!hasMatchingBill) {
+        final dueDate = card.lastStatementDate?.add(const Duration(days: 20)) ??
+            card.lastUpdated.add(const Duration(days: 15));
+        final syntheticBill = Bill(
+          id: 'card_bill_${card.id}',
+          bank: card.bank,
+          cardLast4: card.last4,
+          totalAmount: dueAmt,
+          minimumAmount: card.currentDue ?? 0.0,
+          dueDate: dueDate,
+          sourceDate: card.lastStatementDate ?? card.lastUpdated,
+          createdAt: card.lastStatementDate ?? card.lastUpdated,
+        );
+        billsMap[syntheticBill.id] = syntheticBill;
+      }
+    }
+  }
+
+  final reconciled =
+      Reconciler.reconcileBillsWithPayments(billsMap.values.toList(), allTxns);
   return reconciled;
 });
 

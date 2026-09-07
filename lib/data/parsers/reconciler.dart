@@ -93,16 +93,21 @@ class Reconciler {
 
     // 3. Own-Account Transfer Detection (e.g. transfer between user's accounts within 4 hours)
     if (current.type == TransactionType.debit ||
+        current.type == TransactionType.upi ||
         current.type == TransactionType.credit) {
-      final isDebit = current.type == TransactionType.debit;
-      final oppositeType =
-          isDebit ? TransactionType.credit : TransactionType.debit;
+      final isDebit = current.type == TransactionType.debit ||
+          current.type == TransactionType.upi;
 
       ParsedTransaction? transferCandidate;
       int bestTransferDiff = 4 * 3600 * 1000; // 4 hours in ms
 
       for (final other in historicalCandidates) {
-        if (other.type == oppositeType &&
+        final isOtherOpposite = isDebit
+            ? other.type == TransactionType.credit
+            : (other.type == TransactionType.debit ||
+                other.type == TransactionType.upi);
+
+        if (isOtherOpposite &&
             (other.amount - current.amount).abs() < 0.01 &&
             !other.isReconciled &&
             (other.accountLast4 != current.accountLast4 ||

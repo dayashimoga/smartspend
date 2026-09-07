@@ -15,7 +15,7 @@ class DateParser {
   };
 
   /// Parses diverse banking date formats into a standard DateTime.
-  static DateTime? parse(String? raw) {
+  static DateTime? parse(String? raw, {int? referenceYear}) {
     if (raw == null || raw.trim().isEmpty) return null;
     final text = raw.trim();
 
@@ -59,9 +59,9 @@ class DateParser {
       return DateTime(y, m, d, hr, min, sec);
     }
 
-    // 4. DD-MMM-YY / DD-MMM-YYYY (e.g., 30-Jan-26, 05-FEB-26, 27-JUN-25)
+    // 4. DD-MMM-YY / DD-MMM-YYYY (e.g., 30-Jan-26, 05-FEB-26, 27-JUN-25, 06-SEP-26, 05Sep26, 25 Sep 2026)
     final textMonthMatch =
-        RegExp(r'(\d{1,2})[-/]([a-zA-Z]{3})[-/](\d{2,4})', caseSensitive: false)
+        RegExp(r'(\d{1,2})[-/\s]?([a-zA-Z]{3})[-/\s]?(\d{2,4})', caseSensitive: false)
             .firstMatch(text);
     if (textMonthMatch != null) {
       final d = int.parse(textMonthMatch.group(1)!);
@@ -83,6 +83,31 @@ class DateParser {
       var y = int.parse(dmyMatch.group(3)!);
       if (y < 100) y += 2000;
       return DateTime(y, m, d);
+    }
+
+    // 6. DD-MMM (e.g., 07-Sep, 25-SEP, 05Sep, 07 Sep) without year
+    final textMonthOnlyMatch =
+        RegExp(r'^(\d{1,2})[-/\s]?([a-zA-Z]{3})$', caseSensitive: false)
+            .firstMatch(text);
+    if (textMonthOnlyMatch != null) {
+      final d = int.parse(textMonthOnlyMatch.group(1)!);
+      final monthStr = textMonthOnlyMatch.group(2)!.toLowerCase();
+      final m = _months[monthStr];
+      if (m != null) {
+        final y = referenceYear ?? DateTime.now().year;
+        return DateTime(y, m, d);
+      }
+    }
+
+    // 7. DD-MM or DD/MM (e.g., 07-09, 07/09) without year
+    final dmOnlyMatch = RegExp(r'^(\d{1,2})[-/](\d{1,2})$').firstMatch(text);
+    if (dmOnlyMatch != null) {
+      final d = int.parse(dmOnlyMatch.group(1)!);
+      final m = int.parse(dmOnlyMatch.group(2)!);
+      if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+        final y = referenceYear ?? DateTime.now().year;
+        return DateTime(y, m, d);
+      }
     }
 
     return null;

@@ -6,6 +6,7 @@ import '../../../domain/entities/parsed_transaction.dart';
 import '../../../domain/enums/bank.dart';
 import '../../../domain/enums/confidence.dart';
 import '../../../domain/enums/transaction_type.dart';
+import '../institution_detector.dart';
 import 'bank_rule.dart';
 
 class GenericRules extends BankRule {
@@ -23,8 +24,112 @@ class GenericRules extends BankRule {
     required DateTime smsTimestamp,
   }) {
     final lower = normalizedBody.toLowerCase();
+    final detectedBank = InstitutionDetector.detect('', normalizedBody);
 
-    // Guard: Pure Balance Alerts, Limit Updates, or Statements with no transaction event
+    // A. Generic Credit Card Bill / Statement Extraction
+    final isBillCandidate = lower.contains('statement') ||
+        lower.contains('total due') ||
+        lower.contains('amt due') ||
+        lower.contains('amount due') ||
+        (lower.contains('card') &&
+            (lower.contains('due by') ||
+                lower.contains('due on') ||
+                lower.contains('due date') ||
+                lower.contains('payable by') ||
+                lower.contains('pay before') ||
+                lower.contains('pay by') ||
+                lower.contains('payment of') ||
+                lower.contains('bill')));
+
+    if (isBillCandidate) {
+      final cardMatch = RegexPatterns.cardLast4.firstMatch(normalizedBody);
+      final cardLast4 = cardMatch?.group(1);
+
+      // Attempt multiple total due extractors
+      double total = 0.0;
+      final totalMatch1 = RegexPatterns.billTotalDue.firstMatch(normalizedBody);
+      final totalMatch2 = RegExp(
+              r'(?:Total\s+(?:due(?:\s+amt)?|amount(?:\s+due)?|amt\s+due)|Total\s+Due).*?(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)',
+              caseSensitive: false)
+          .firstMatch(normalizedBody);
+      final totalMatch3 = RegExp(
+              r'Payment\s+of\s+(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)\s+is\s+due',
+              caseSensitive: false)
+          .firstMatch(normalizedBody);
+      final totalMatch4 = RegExp(
+              r'bill\s+(?:of\s+)?(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)',
+              caseSensitive: false)
+          .firstMatch(normalizedBody);
+
+      final totalStr = totalMatch1?.group(1) ??
+          totalMatch2?.group(1) ??
+          totalMatch3?.group(1) ??
+          totalMatch4?.group(1);
+      if (totalStr != null) {
+        total = AmountParser.parse(totalStr) ?? 0.0;
+      }
+
+      final minMatch = RegexPatterns.billMinDue.firstMatch(normalizedBody);
+      final minDue = minMatch != null
+          ? AmountParser.parse(minMatch.group(1)) ?? 0.0
+          : 0.0;
+
+      final dueMatch = RegexPatterns.billDueDate.firstMatch(normalizedBody);
+      DateTime? dueDate;
+      if (dueMatch != null) {
+        dueDate = DateParser.parse(dueMatch.group(1),
+            referenceYear: smsTimestamp.year);
+      }
+
+      if (total > 0 || dueDate != null) {
+        dueDate ??= smsTimestamp.add(const Duration(days: 20));
+        return ParsedTransaction(
+          id: const Uuid().v4(),
+          rawSmsId: rawSmsId,
+          type: TransactionType.bill,
+          bank: detectedBank,
+          cardLast4: cardLast4,
+          amount: total,
+          currency: 'INR',
+          transactionDate: smsTimestamp,
+          smsReceivedAt: smsTimestamp,
+          billTotal: total,
+          billMinimum: minDue,
+          billDueDate: dueDate,
+          confidence: total > 0 ? Confidence.high : Confidence.medium,
+          parserVersion: '1.0.0',
+          category: 'Credit Card Bill',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }
+
+      // If text explicitly mentions credit card bill/statement, NEVER let it fall through to spend/debit
+      if (lower.contains('card') &&
+          (lower.contains('statement') || lower.contains('bill') || lower.contains('due'))) {
+        return ParsedTransaction(
+          id: const Uuid().v4(),
+          rawSmsId: rawSmsId,
+          type: TransactionType.bill,
+          bank: detectedBank,
+          cardLast4: cardLast4,
+          amount: total,
+          currency: 'INR',
+          transactionDate: smsTimestamp,
+          smsReceivedAt: smsTimestamp,
+          billTotal: total,
+          billMinimum: minDue,
+          billDueDate: smsTimestamp.add(const Duration(days: 20)),
+          confidence: Confidence.medium,
+          parserVersion: '1.0.0',
+          category: 'Credit Card Bill',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }
+    }
+
+    // B. Pure Balance Alerts, Limit Updates, or Statements with no transaction event
     final hasTxnKeyword = lower.contains('debited') ||
         lower.contains('credited') ||
         lower.contains('spent') ||
@@ -37,7 +142,9 @@ class GenericRules extends BankRule {
         lower.contains('cashback') ||
         lower.contains('refund') ||
         lower.contains('reversal') ||
-        lower.contains('toll');
+        lower.contains('toll') ||
+        lower.contains('txn') ||
+        lower.contains('transaction');
 
     final isPureBalanceOrStatement = !hasTxnKeyword &&
         (lower.contains('bal') ||
@@ -46,12 +153,40 @@ class GenericRules extends BankRule {
             lower.contains('statement'));
 
     if (isPureBalanceOrStatement) {
-      // Return unparsed/informational record so balance/limit is NEVER counted as a spend transaction
+      final balMatch =
+          RegexPatterns.availableBalance.firstMatch(normalizedBody);
+      final acctMatch = RegexPatterns.accountLast4.firstMatch(normalizedBody);
+      final balance = balMatch != null
+          ? AmountParser.parse(balMatch.group(1) ?? balMatch.group(2))
+          : null;
+      final acctLast4 = acctMatch?.group(1);
+
+      if (balance != null) {
+        return ParsedTransaction(
+          id: const Uuid().v4(),
+          rawSmsId: rawSmsId,
+          type: TransactionType.unknown,
+          bank: detectedBank,
+          accountLast4: acctLast4,
+          amount: 0.0,
+          currency: 'INR',
+          transactionDate: smsTimestamp,
+          smsReceivedAt: smsTimestamp,
+          balance: balance,
+          confidence: acctLast4 != null ? Confidence.high : Confidence.medium,
+          parserVersion: '1.0.0',
+          category: 'Account Balance',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }
+
+      // Return unparsed/informational record so non-financial balance/limit is NEVER counted as a spend transaction
       return ParsedTransaction(
         id: const Uuid().v4(),
         rawSmsId: rawSmsId,
         type: TransactionType.unknown,
-        bank: Bank.unknown,
+        bank: detectedBank,
         amount: 0.0,
         currency: 'INR',
         transactionDate: smsTimestamp,
@@ -175,32 +310,43 @@ class GenericRules extends BankRule {
 
     // 5. Reference / UPI Ref
     final refMatch = RegexPatterns.referenceNumber.firstMatch(normalizedBody);
-    final ref = refMatch?.group(1);
+    final upiRefMatch = RegExp(
+            r'(?:by\s+)?UPI\s*[:.]?\s*([0-9]{6,20})',
+            caseSensitive: false)
+        .firstMatch(normalizedBody);
+    final ref = refMatch?.group(1) ?? upiRefMatch?.group(1);
 
     // 6. Contextual Merchant / Payee
     String? merchant;
-    final merchantMatch = RegExp(
-            r'(?:at|to|from)\s+([A-Za-z0-9\s&._-]+?)(?:\s+on|\s+at|\s+from|\s+Ref|\s+Bal|\.|$)',
+    final merchantMatches = RegExp(
+            r'(?:at|to|from|towards|info)\s+([A-Za-z0-9\s&._-]+?)(?:\s+on\s+|\s+at\s+|\s+from\s+|\s+by\s+UPI|\s+Ref|\s+Bal|\.\s+|\.$|$)',
             caseSensitive: false)
-        .firstMatch(normalizedBody);
-    if (merchantMatch != null) {
-      final cand = merchantMatch.group(1)?.trim();
+        .allMatches(normalizedBody);
+    for (final m in merchantMatches) {
+      final cand = m.group(1)?.trim();
       if (cand != null &&
           cand.length >= 2 &&
           cand.length <= 40 &&
           !cand.toLowerCase().startsWith('your') &&
-          !cand.toLowerCase().startsWith('the')) {
+          !cand.toLowerCase().startsWith('the') &&
+          !cand.toLowerCase().contains('bank') &&
+          !cand.toLowerCase().contains('a/c') &&
+          !cand.toLowerCase().contains('account') &&
+          !cand.toLowerCase().contains('card')) {
         merchant = cand;
+        break;
       }
     }
 
     // 7. Date extraction from text if available
     DateTime txnDate = smsTimestamp;
     final dateMatch = RegExp(
-      r'\b([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|[0-9]{1,2}-[a-zA-Z]{3}-[0-9]{2,4})\b',
+      r'\b([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|[0-9]{1,2}[-/\s]?[a-zA-Z]{3}[-/\s]?[0-9]{2,4}|[0-9]{1,2}[-/\s]?[a-zA-Z]{3}|[0-9]{1,2}[/-][0-9]{1,2})\b',
+      caseSensitive: false,
     ).firstMatch(normalizedBody);
     if (dateMatch != null) {
-      final parsedDate = DateParser.parse(dateMatch.group(1));
+      final parsedDate = DateParser.parse(dateMatch.group(1),
+          referenceYear: smsTimestamp.year);
       if (parsedDate != null) {
         txnDate = parsedDate;
       }
@@ -216,7 +362,7 @@ class GenericRules extends BankRule {
       id: const Uuid().v4(),
       rawSmsId: rawSmsId,
       type: type,
-      bank: Bank.unknown,
+      bank: detectedBank,
       accountLast4: acctLast4,
       cardLast4: cardLast4,
       amount: amount,

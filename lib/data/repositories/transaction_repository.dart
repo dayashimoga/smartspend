@@ -83,6 +83,8 @@ class TransactionRepository implements ITransactionRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool includeExcluded = false,
+    bool includeBills = true,
+    bool includePureBalances = true,
   }) async {
     final db = await _dbHelper.database;
     final whereClauses = <String>[];
@@ -94,6 +96,15 @@ class TransactionRepository implements ITransactionRepository {
     if (type != null) {
       whereClauses.add('type = ?');
       whereArgs.add(type.name);
+    } else {
+      if (!includeBills) {
+        whereClauses.add('type != ?');
+        whereArgs.add(TransactionType.bill.name);
+      }
+      if (!includePureBalances) {
+        whereClauses.add('(type != ? OR amount > 0)');
+        whereArgs.add(TransactionType.unknown.name);
+      }
     }
     if (bank != null) {
       whereClauses.add('bank = ?');
@@ -141,7 +152,12 @@ class TransactionRepository implements ITransactionRepository {
   @override
   Future<List<ParsedTransaction>> getRecentTransactions(
       {int limit = 10}) async {
-    return getAllTransactions(limit: limit, offset: 0);
+    return getAllTransactions(
+      limit: limit,
+      offset: 0,
+      includeBills: false,
+      includePureBalances: false,
+    );
   }
 
   @override
@@ -151,8 +167,8 @@ class TransactionRepository implements ITransactionRepository {
     final res = await db.query(
       'parsed_transactions',
       where:
-          '(merchant LIKE ? OR payee LIKE ? OR payer LIKE ? OR category LIKE ? OR reference LIKE ?)',
-      whereArgs: [q, q, q, q, q],
+          'type != ? AND (merchant LIKE ? OR payee LIKE ? OR payer LIKE ? OR category LIKE ? OR reference LIKE ?)',
+      whereArgs: [TransactionType.bill.name, q, q, q, q, q],
       orderBy: 'transaction_date DESC',
       limit: 50,
     );
@@ -167,6 +183,8 @@ class TransactionRepository implements ITransactionRepository {
       limit: 10000,
       startDate: startDate,
       endDate: endDate,
+      includeBills: false,
+      includePureBalances: false,
     );
 
     double totalIncome = 0.0;
@@ -209,7 +227,8 @@ class TransactionRepository implements ITransactionRepository {
             where:
                 'bank = ? AND account_last4 = ? AND balance IS NOT NULL AND transaction_date <= ?',
             whereArgs: [bankName, last4, asOfMs],
-            orderBy: 'transaction_date DESC',
+            orderBy:
+                'COALESCE(sms_received_at, transaction_date) DESC, transaction_date DESC, created_at DESC',
             limit: 1,
           );
           if (txRes.isNotEmpty) {
@@ -220,8 +239,22 @@ class TransactionRepository implements ITransactionRepository {
             anyReliable = true;
           }
         } else {
-          sum += currentBal;
-          anyReliable = true;
+          final txRes = await db.query(
+            'parsed_transactions',
+            where:
+                'bank = ? AND account_last4 = ? AND balance IS NOT NULL',
+            whereArgs: [bankName, last4],
+            orderBy:
+                'COALESCE(sms_received_at, transaction_date) DESC, transaction_date DESC, created_at DESC',
+            limit: 1,
+          );
+          if (txRes.isNotEmpty) {
+            sum += (txRes.first['balance'] as num).toDouble();
+            anyReliable = true;
+          } else {
+            sum += currentBal;
+            anyReliable = true;
+          }
         }
       }
 

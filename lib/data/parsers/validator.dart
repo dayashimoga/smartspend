@@ -8,7 +8,9 @@ class Validator {
     var issuesFound = false;
 
     // 1. Amount validation
-    if (txn.type != TransactionType.bill && txn.amount <= 0) {
+    if (txn.type != TransactionType.bill &&
+        txn.balance == null &&
+        txn.amount <= 0) {
       issuesFound = true;
     }
 
