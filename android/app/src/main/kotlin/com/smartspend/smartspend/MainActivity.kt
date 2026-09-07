@@ -45,7 +45,8 @@ class MainActivity : FlutterFragmentActivity() {
                         return@setMethodCallHandler
                     }
                     val limit = call.argument<Int>("limit") ?: 2000
-                    val smsList = queryFinancialSms(limit)
+                    val sinceTimestamp = call.argument<Number>("sinceTimestamp")?.toLong()
+                    val smsList = queryFinancialSms(limit, sinceTimestamp)
                     result.success(smsList)
                 }
                 "getQueuedSms" -> {
@@ -79,27 +80,40 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun queryFinancialSms(limit: Int): List<Map<String, Any>> {
+    private fun queryFinancialSms(limit: Int, sinceTimestamp: Long? = null): List<Map<String, Any>> {
         val messages = mutableListOf<Map<String, Any>>()
         val uri = Uri.parse("content://sms/inbox")
         val projection = arrayOf("_id", "address", "body", "date")
         
-        // Filter for financial senders and keywords
-        val selection = "body LIKE ? OR body LIKE ? OR body LIKE ? OR body LIKE ? OR body LIKE ?"
-        val selectionArgs = arrayOf("%Rs%", "%INR%", "%debited%", "%credited%", "%spent%")
+        // Filter for financial senders and keywords with optional incremental timestamp filter
+        val baseSelection = "body LIKE ? OR body LIKE ? OR body LIKE ? OR body LIKE ? OR body LIKE ?"
+        val baseKeywords = arrayOf("%Rs%", "%INR%", "%debited%", "%credited%", "%spent%")
+        
+        val selection: String
+        val selectionArgs: Array<String>
+        if (sinceTimestamp != null && sinceTimestamp > 0) {
+            selection = "($baseSelection) AND date > ?"
+            selectionArgs = baseKeywords + arrayOf(sinceTimestamp.toString())
+        } else {
+            selection = baseSelection
+            selectionArgs = baseKeywords
+        }
         val sortOrder = "date DESC LIMIT $limit"
 
         contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
+            val idCol = cursor.getColumnIndex("_id")
             val addressCol = cursor.getColumnIndex("address")
             val bodyCol = cursor.getColumnIndex("body")
             val dateCol = cursor.getColumnIndex("date")
 
             while (cursor.moveToNext()) {
+                val id = if (idCol >= 0) cursor.getString(idCol) ?: "" else ""
                 val address = if (addressCol >= 0) cursor.getString(addressCol) ?: "" else ""
                 val body = if (bodyCol >= 0) cursor.getString(bodyCol) ?: "" else ""
                 val date = if (dateCol >= 0) cursor.getLong(dateCol) else System.currentTimeMillis()
 
                 messages.add(mapOf(
+                    "id" to id,
                     "sender" to address,
                     "body" to body,
                     "timestamp" to date

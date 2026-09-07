@@ -58,6 +58,7 @@ void main() {
       expect(find.text('Primary Currency'), findsOneWidget);
       expect(find.text('Security'), findsOneWidget);
       expect(find.text('Biometric App Lock'), findsOneWidget);
+      expect(find.text('Data Quality & Ingestion History'), findsOneWidget);
       expect(find.text('Load Golden Sample SMS'), findsOneWidget);
       expect(find.text('Export Data to JSON'), findsOneWidget);
       expect(find.text('Export Data to CSV'), findsOneWidget);
@@ -189,6 +190,33 @@ void main() {
         await tester.tap(switches.at(1));
         await tester.pump();
       }
+
+      await tester.pump(const Duration(seconds: 11));
+    });
+
+    testWidgets('Tapping Load Golden Sample SMS loads sample data',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            dbHelperProvider.overrideWithValue(dbHelper),
+          ],
+          child: const MaterialApp(
+            home: SettingsScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Load Golden Sample SMS'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
       await tester.pump(const Duration(seconds: 11));
     });

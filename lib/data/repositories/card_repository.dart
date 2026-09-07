@@ -39,4 +39,48 @@ class CardRepository implements ICardRepository {
     if (res.isEmpty) return null;
     return CreditCard.fromMap(res.first);
   }
+
+  @override
+  Future<List<CreditCard>> getCardsByBank(Bank bank) async {
+    final db = await _dbHelper.database;
+    final res = await db.query(
+      'cards',
+      where: 'bank = ?',
+      whereArgs: [bank.name],
+      orderBy: 'last_updated DESC',
+    );
+    return res.map((m) => CreditCard.fromMap(m)).toList();
+  }
+
+  @override
+  Future<List<CreditCard>> getCardsAsOf(DateTime asOf) async {
+    final db = await _dbHelper.database;
+    final cards = await getAllCards();
+    final asOfMs = asOf.millisecondsSinceEpoch;
+
+    final result = <CreditCard>[];
+    for (final card in cards) {
+      final txRes = await db.query(
+        'parsed_transactions',
+        where: 'bank = ? AND card_last4 = ? AND transaction_date <= ?',
+        whereArgs: [card.bank.name, card.last4, asOfMs],
+        orderBy: 'transaction_date DESC',
+        limit: 1,
+      );
+
+      if (txRes.isNotEmpty) {
+        final avl = (txRes.first['available_limit'] as num?)?.toDouble() ??
+            card.availableLimit;
+        final out = (txRes.first['outstanding'] as num?)?.toDouble() ??
+            card.outstanding;
+        final date = DateTime.fromMillisecondsSinceEpoch(
+            txRes.first['transaction_date'] as int);
+        result.add(card.copyWith(
+            availableLimit: avl, outstanding: out, lastUpdated: date));
+      } else {
+        result.add(card);
+      }
+    }
+    return result;
+  }
 }

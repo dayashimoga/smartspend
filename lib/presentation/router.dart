@@ -7,6 +7,7 @@ import 'screens/fastag/fastag_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/insights/insights_screen.dart';
 import 'screens/review/review_screen.dart';
+import 'screens/settings/data_quality_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/transactions/transactions_screen.dart';
 
@@ -60,6 +61,11 @@ final appRouter = GoRouter(
       path: '/settings',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/data-quality',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const DataQualityScreen(),
     ),
   ],
 );

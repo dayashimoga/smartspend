@@ -34,14 +34,21 @@ class SmsDatasource {
 
   /// Reads historical financial SMS from the Android device inbox.
   /// Filters for sender addresses with known financial keywords (HDFC, ICICI, SBI, AXIS, etc.)
-  static Future<List<Map<String, dynamic>>> readInboxSms(
-      {int limit = 2000}) async {
+  /// Supports incremental querying via [sinceTimestamp].
+  static Future<List<Map<String, dynamic>>> readInboxSms({
+    int limit = 2000,
+    int? sinceTimestamp,
+  }) async {
     if (kIsWeb || !Platform.isAndroid) {
       return [];
     }
     try {
+      final Map<String, dynamic> args = {'limit': limit};
+      if (sinceTimestamp != null) {
+        args['sinceTimestamp'] = sinceTimestamp;
+      }
       final List<dynamic>? result =
-          await _channel.invokeMethod('readInboxSms', {'limit': limit});
+          await _channel.invokeMethod('readInboxSms', args);
       if (result == null) return [];
       return result
           .map((item) => Map<String, dynamic>.from(item as Map))

@@ -171,31 +171,77 @@ class TransactionRepository implements ITransactionRepository {
 
     double totalIncome = 0.0;
     double totalExpense = 0.0;
+    double totalCardSpent = 0.0;
 
     for (final t in txns) {
       if (t.isExcluded) continue;
-      // Prevent double counting billPayment (card repayment from bank debit)
-      if (t.type == TransactionType.billPayment) continue;
+      // Exclude neutral internal movements (billPayment, transfer, investmentTransfer, fastagFunding, bill, reversal)
+      if (t.type.isNeutral) continue;
 
       if (t.type.isIncome) {
         totalIncome += t.amount;
       } else if (t.type.isExpense) {
         totalExpense += t.amount;
+        if (t.type == TransactionType.purchase ||
+            (t.cardLast4 != null && t.cardLast4!.isNotEmpty)) {
+          totalCardSpent += t.amount;
+        }
       }
     }
 
-    // Accounts balance sum
-    final acctRes =
-        await db.rawQuery('SELECT SUM(current_balance) as total FROM accounts');
-    final totalAcctBal = (acctRes.first['total'] as num?)?.toDouble() ?? 0.0;
+    // Accounts balance sum: use latest known reliable balance <= endDate
+    double? totalAcctBal;
+    final accts = await db.query('accounts');
+    if (accts.isNotEmpty) {
+      double sum = 0.0;
+      bool anyReliable = false;
+      final asOfMs = endDate?.millisecondsSinceEpoch;
+
+      for (final a in accts) {
+        final bankName = a['bank'] as String;
+        final last4 = a['last4'] as String;
+        final currentBal = (a['current_balance'] as num?)?.toDouble() ?? 0.0;
+        final lastUpd = a['last_updated'] as int;
+
+        if (asOfMs != null) {
+          final txRes = await db.query(
+            'parsed_transactions',
+            where:
+                'bank = ? AND account_last4 = ? AND balance IS NOT NULL AND transaction_date <= ?',
+            whereArgs: [bankName, last4, asOfMs],
+            orderBy: 'transaction_date DESC',
+            limit: 1,
+          );
+          if (txRes.isNotEmpty) {
+            sum += (txRes.first['balance'] as num).toDouble();
+            anyReliable = true;
+          } else if (lastUpd <= asOfMs) {
+            sum += currentBal;
+            anyReliable = true;
+          }
+        } else {
+          sum += currentBal;
+          anyReliable = true;
+        }
+      }
+
+      if (anyReliable) {
+        totalAcctBal = sum;
+      }
+    }
 
     // Cards limits & outstanding
     final cardRes = await db.rawQuery(
-        'SELECT SUM(outstanding) as out_total, SUM(available_limit) as avl_total FROM cards');
-    final totalCardOut =
-        (cardRes.first['out_total'] as num?)?.toDouble() ?? 0.0;
+        'SELECT SUM(outstanding) as out_total, SUM(statement_due) as stmt_total, SUM(available_limit) as avl_total FROM cards');
+    final dbCardOut = (cardRes.first['out_total'] as num?)?.toDouble() ?? 0.0;
+    final dbStmtDue = (cardRes.first['stmt_total'] as num?)?.toDouble() ?? 0.0;
     final totalCardAvl =
         (cardRes.first['avl_total'] as num?)?.toDouble() ?? 0.0;
+
+    // Card outstanding defaults to statement due or outstanding, or current period card spent
+    final totalCardOut = dbCardOut > 0
+        ? dbCardOut
+        : (dbStmtDue > 0 ? dbStmtDue : totalCardSpent);
 
     // Upcoming bills
     final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -215,6 +261,7 @@ class TransactionRepository implements ITransactionRepository {
       netCashFlow: totalIncome - totalExpense,
       totalAccountBalance: totalAcctBal,
       totalCardOutstanding: totalCardOut,
+      totalCardSpent: totalCardSpent,
       totalAvailableCredit: totalCardAvl,
       upcomingBillsCount: upcomingCount,
       upcomingBillsTotal: upcomingTotal,

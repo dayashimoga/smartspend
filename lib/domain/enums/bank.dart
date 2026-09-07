@@ -10,6 +10,8 @@ enum Bank {
   ujjivan,
   sib,
   onecard,
+  rbl,
+  kotak,
   unknown;
 
   String get displayName {
@@ -36,6 +38,10 @@ enum Bank {
         return 'South Indian Bank';
       case Bank.onecard:
         return 'OneCard';
+      case Bank.rbl:
+        return 'RBL Bank';
+      case Bank.kotak:
+        return 'Kotak Mahindra Bank';
       case Bank.unknown:
         return 'General / Other';
     }
@@ -65,6 +71,10 @@ enum Bank {
         return 'SIB';
       case Bank.onecard:
         return 'OneCard';
+      case Bank.rbl:
+        return 'RBL';
+      case Bank.kotak:
+        return 'Kotak';
       case Bank.unknown:
         return 'Other';
     }

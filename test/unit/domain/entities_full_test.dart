@@ -259,8 +259,8 @@ void main() {
 
       final empty = FinancialSummary.empty();
       expect(empty.totalIncome, equals(0.0));
-      expect(empty.cardUtilizationPercentage, equals(0.0));
-      expect(empty.props.length, equals(10));
+      expect(empty.cardUtilizationPercentage, isNull);
+      expect(empty.props.length, equals(11));
     });
 
     test('Exhaustive coverage for TransactionType, Bank, and Confidence enums',

@@ -36,18 +36,57 @@ class Reconciler {
           type: TransactionType.billPayment,
           category: 'Credit Card Payment',
         );
+      } else if (title.contains('mutual fund') ||
+          title.contains('iccl') ||
+          title.contains('bse') ||
+          title.contains('nse') ||
+          title.contains('zerodha') ||
+          title.contains('groww') ||
+          title.contains('sip') ||
+          title.contains('amc') ||
+          title.contains('upstox') ||
+          title.contains('kfintech') ||
+          title.contains('cams') ||
+          (current.payee != null &&
+              (current.payee!.toLowerCase().contains('mutual fund') ||
+                  current.payee!.toLowerCase().contains('iccl') ||
+                  current.payee!.toLowerCase().contains('zerodha')))) {
+        current = current.copyWith(
+          type: TransactionType.investmentTransfer,
+          category: 'Investments',
+        );
+      } else if ((title.contains('added to') && title.contains('fastag')) ||
+          title.contains('fastag recharge') ||
+          body.contains('netc fastag') ||
+          body.contains('fastag recharge')) {
+        current = current.copyWith(
+          type: TransactionType.fastagFunding,
+          category: 'FASTag Recharge',
+        );
       }
     }
 
     // 2. Detect Card Credit from payment arrival (reconciles card statement with bank debit)
-    if (current.type == TransactionType.credit) {
+    if (current.type == TransactionType.credit ||
+        current.type == TransactionType.unknown) {
       final title = current.displayTitle.toLowerCase();
+      final merchant = current.merchant?.toLowerCase() ?? '';
       if (title.contains('payment received') ||
+          title.contains('received payment') ||
           title.contains('card payment') ||
-          title.contains('autopay received')) {
+          title.contains('autopay received') ||
+          title.contains('credited to your card') ||
+          title.contains('credited to your sbi credit card') ||
+          merchant.contains('payment received') ||
+          merchant.contains('received payment')) {
         current = current.copyWith(
           type: TransactionType.billPayment,
           category: 'Credit Card Payment',
+        );
+      } else if (title.contains('cashback') || merchant.contains('cashback')) {
+        current = current.copyWith(
+          type: TransactionType.cashback,
+          category: 'Cashback & Rewards',
         );
       }
     }
@@ -273,5 +312,83 @@ class Reconciler {
       return bill.copyWith(status: BillStatus.noPaymentRequired);
     }
     return bill;
+  }
+
+  /// Reconciles bills against detected payments.
+  /// Matches payments by cardLast4 and/or bank within proximity of bill creation/due date,
+  /// accumulates paid amounts for partial/full payments, and resolves duplicate statements.
+  static List<Bill> reconcileBillsWithPayments(
+    List<Bill> bills,
+    List<ParsedTransaction> payments,
+  ) {
+    if (bills.isEmpty) return [];
+
+    // First deduplicate duplicate statements for same card in same billing cycle
+    final deduplicatedBills = <String, Bill>{};
+    for (final bill in bills) {
+      final key =
+          '${bill.bank.name}_${bill.cardLast4}_${bill.dueDate.year}_${bill.dueDate.month}';
+      if (!deduplicatedBills.containsKey(key) ||
+          bill.createdAt.isAfter(deduplicatedBills[key]!.createdAt)) {
+        deduplicatedBills[key] = bill;
+      }
+    }
+
+    final billList = deduplicatedBills.values.toList();
+    final billPayments = payments
+        .where((p) =>
+            p.type == TransactionType.billPayment ||
+            (p.category.toLowerCase().contains('credit card payment') &&
+                !p.isExcluded))
+        .toList();
+
+    return billList.map((bill) {
+      if (bill.totalAmount <= 0) {
+        return bill.copyWith(status: BillStatus.noPaymentRequired);
+      }
+
+      double totalPaid = 0.0;
+      String? lastPaymentId;
+
+      for (final payment in billPayments) {
+        bool matchesCard = false;
+        if (bill.cardLast4.isNotEmpty &&
+            payment.cardLast4 != null &&
+            payment.cardLast4!.isNotEmpty) {
+          matchesCard = bill.cardLast4 == payment.cardLast4;
+        } else if (bill.bank == payment.bank) {
+          matchesCard = true;
+        }
+
+        if (matchesCard) {
+          // Check date proximity: payment made between bill createdAt/sourceDate and dueDate + 15 days
+          final refDate = bill.sourceDate ?? bill.createdAt;
+          final isAfterBill = payment.transactionDate
+              .isAfter(refDate.subtract(const Duration(days: 3)));
+          final isBeforeGrace = payment.transactionDate
+              .isBefore(bill.dueDate.add(const Duration(days: 15)));
+
+          if (isAfterBill && isBeforeGrace) {
+            totalPaid += payment.amount;
+            lastPaymentId = payment.id;
+          }
+        }
+      }
+
+      BillStatus newStatus;
+      if (totalPaid >= bill.totalAmount) {
+        newStatus = BillStatus.paid;
+      } else if (totalPaid > 0) {
+        newStatus = BillStatus.partial;
+      } else {
+        newStatus = bill.effectiveStatus;
+      }
+
+      return bill.copyWith(
+        paidAmount: totalPaid,
+        status: newStatus,
+        paymentTransactionId: lastPaymentId,
+      );
+    }).toList();
   }
 }

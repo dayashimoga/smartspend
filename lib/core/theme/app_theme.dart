@@ -12,6 +12,8 @@ class AppColors {
   static const Color expense = Color(0xFFF43F5E); // Rose
   static const Color warning = Color(0xFFF59E0B); // Amber
   static const Color info = Color(0xFF38BDF8); // Sky blue
+  static const Color success = income;
+  static const Color danger = expense;
 
   // Dark Mode (Deep Midnight / AMOLED)
   static const Color darkBg = Color(0xFF0B0F19);

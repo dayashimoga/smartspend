@@ -4,17 +4,24 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/datasources/sms_datasource.dart';
 import '../../providers/app_providers.dart';
+import '../../widgets/ingestion_progress_banner.dart';
 import '../../widgets/summary_cards.dart';
+import '../../widgets/time_period_selector.dart';
 import '../../widgets/transaction_tile.dart';
+import '../../widgets/upcoming_bills_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(financialSummaryProvider);
-    final recentAsync = ref.watch(recentTransactionsProvider);
+    final period = ref.watch(selectedTimePeriodProvider);
+    final summaryAsync = ref.watch(filteredFinancialSummaryProvider);
+    final txnsAsync = ref.watch(filteredTransactionsProvider);
+    final billsAsync = ref.watch(filteredBillsProvider);
     final isSyncing = ref.watch(isSyncingProvider);
+    final ingestionProgress = ref.watch(ingestionControllerProvider);
+    final ingestionNotifier = ref.read(ingestionControllerProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -36,7 +43,7 @@ class DashboardScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            icon: isSyncing
+            icon: isSyncing || ingestionProgress.isBusy
                 ? const SizedBox(
                     width: 20,
                     height: 20,
@@ -45,43 +52,21 @@ class DashboardScreen extends ConsumerWidget {
                   )
                 : const Icon(Icons.sync),
             tooltip: 'Sync SMS',
-            onPressed: isSyncing
+            onPressed: isSyncing || ingestionProgress.isBusy
                 ? null
                 : () async {
-                    ref.read(isSyncingProvider.notifier).state = true;
                     try {
                       final hasPerm = await SmsDatasource.hasPermissions();
                       if (!hasPerm) {
                         await SmsDatasource.requestPermissions();
                       }
-                      final messages = await SmsDatasource.readInboxSms();
-                      if (messages.isNotEmpty) {
-                        final useCase = ref.read(ingestSmsUseCaseProvider);
-                        await useCase.execute(messages);
-                      }
-                      // Refresh providers
-                      ref.invalidate(financialSummaryProvider);
-                      ref.invalidate(recentTransactionsProvider);
-                      ref.invalidate(allTransactionsProvider);
-                      ref.invalidate(accountsProvider);
-                      ref.invalidate(cardsProvider);
-                      ref.invalidate(billsProvider);
-                      ref.invalidate(needsReviewTransactionsProvider);
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Sync completed successfully')),
-                        );
-                      }
+                      await ingestionNotifier.startSync();
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Sync notice: $e')),
                         );
                       }
-                    } finally {
-                      ref.read(isSyncingProvider.notifier).state = false;
                     }
                   },
           ),
@@ -94,16 +79,40 @@ class DashboardScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(financialSummaryProvider);
+          ref.invalidate(filteredFinancialSummaryProvider);
           ref.invalidate(recentTransactionsProvider);
+          ref.invalidate(filteredTransactionsProvider);
+          ref.invalidate(filteredBillsProvider);
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            // Non-blocking Ingestion Progress Banner
+            IngestionProgressBanner(
+              progress: ingestionProgress,
+              onPause: ingestionNotifier.pause,
+              onResume: ingestionNotifier.resume,
+              onCancel: ingestionNotifier.cancel,
+              onRetry: ingestionNotifier.retry,
+              onDismiss: ingestionNotifier.dismiss,
+            ),
+
+            // Time Period Selector
+            TimePeriodSelector(
+              period: period,
+              onPeriodChanged: (newPeriod) {
+                ref.read(selectedTimePeriodProvider.notifier).state = newPeriod;
+              },
+            ),
+
             // Financial Summary
             summaryAsync.when(
               data: (summary) => Column(
                 children: [
-                  SummaryCards(summary: summary),
+                  SummaryCards(
+                    summary: summary,
+                    isUpdating: ingestionProgress.isBusy || isSyncing,
+                  ),
 
                   // Needs Review alert banner if applicable
                   if (summary.needsReviewCount > 0)
@@ -129,7 +138,7 @@ class DashboardScreen extends ConsumerWidget {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  '${summary.needsReviewCount} transaction(s) need your review',
+                                  '${summary.needsReviewCount} unresolved transaction(s) excluded from totals',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
@@ -138,44 +147,6 @@ class DashboardScreen extends ConsumerWidget {
                               ),
                               const Icon(Icons.chevron_right,
                                   color: AppColors.warning, size: 18),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Upcoming Bills alert banner if applicable
-                  if (summary.upcomingBillsCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => context.push('/bills'),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.info.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: AppColors.info.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.receipt_long,
-                                  color: AppColors.info, size: 20),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  '${summary.upcomingBillsCount} upcoming credit card bills due',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      color: AppColors.info),
-                                ),
-                              ),
-                              const Icon(Icons.chevron_right,
-                                  color: AppColors.info, size: 18),
                             ],
                           ),
                         ),
@@ -191,6 +162,16 @@ class DashboardScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 child: Text('Error loading summary: $err'),
               ),
+            ),
+
+            // Prominent Upcoming Bills Section before Recent Transactions
+            billsAsync.when(
+              data: (bills) => UpcomingBillsCard(
+                bills: bills,
+                onViewAll: () => context.push('/bills'),
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
 
             // Recent Transactions Section Header
@@ -218,8 +199,9 @@ class DashboardScreen extends ConsumerWidget {
             ),
 
             // Recent Transactions List
-            recentAsync.when(
-              data: (txns) {
+            txnsAsync.when(
+              data: (allTxns) {
+                final txns = allTxns.take(10).toList();
                 if (txns.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.all(32),
@@ -233,7 +215,7 @@ class DashboardScreen extends ConsumerWidget {
                                   : AppColors.lightTextMuted),
                           const SizedBox(height: 12),
                           Text(
-                            'No transactions ingested yet',
+                            'No transactions in this period',
                             style: TextStyle(
                                 color: isDark
                                     ? AppColors.darkTextSecondary
@@ -241,7 +223,7 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Tap "Sync SMS" above or rescan in settings',
+                            'Switch time period or tap "Sync SMS" above',
                             style: TextStyle(
                                 fontSize: 12,
                                 color: isDark

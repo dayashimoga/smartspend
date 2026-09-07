@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:smartspend/core/database/database_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -8,15 +9,18 @@ void main() {
 
   const testDbName1 = 'test_migration_v1_v3.db';
   const testDbName2 = 'test_migration_rollback.db';
+  const testDbName3 = 'test_migration_v1_v5.db';
 
   setUp(() async {
     await databaseFactory.deleteDatabase(testDbName1);
     await databaseFactory.deleteDatabase(testDbName2);
+    await databaseFactory.deleteDatabase(testDbName3);
   });
 
   tearDown(() async {
     await databaseFactory.deleteDatabase(testDbName1);
     await databaseFactory.deleteDatabase(testDbName2);
+    await databaseFactory.deleteDatabase(testDbName3);
   });
 
   group('Multi-Version Database Migration & Rollback Forensic Suite', () {
@@ -191,6 +195,110 @@ void main() {
       expect(rows.length, equals(1));
       expect(rows.first['val'], equals('original'));
       await db.close();
+    });
+
+    test(
+        'DatabaseHelper testOnUpgrade successfully migrates all steps from v1 to v5',
+        () async {
+      var db = await openDatabase(
+        testDbName3,
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE budgets (
+              id TEXT PRIMARY KEY,
+              category TEXT NOT NULL,
+              monthly_limit REAL NOT NULL,
+              currency TEXT NOT NULL,
+              current_spend REAL NOT NULL,
+              month INTEGER NOT NULL,
+              year INTEGER NOT NULL,
+              UNIQUE(category, month, year)
+            );
+          ''');
+          await db.execute('''
+            CREATE TABLE parsed_transactions (
+              id TEXT PRIMARY KEY,
+              raw_sms_id TEXT NOT NULL,
+              type TEXT NOT NULL,
+              bank TEXT NOT NULL,
+              amount REAL NOT NULL,
+              currency TEXT NOT NULL,
+              transaction_date INTEGER NOT NULL,
+              confidence TEXT NOT NULL,
+              parser_version TEXT NOT NULL,
+              category TEXT NOT NULL,
+              is_excluded INTEGER NOT NULL DEFAULT 0,
+              is_reconciled INTEGER NOT NULL DEFAULT 0,
+              reconciled_with_id TEXT,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            );
+          ''');
+          await db.execute('''
+            CREATE TABLE cards (
+              id TEXT PRIMARY KEY,
+              bank TEXT NOT NULL,
+              last4 TEXT NOT NULL,
+              available_limit REAL,
+              total_limit REAL,
+              outstanding REAL,
+              currency TEXT NOT NULL,
+              last_updated INTEGER NOT NULL,
+              UNIQUE(bank, last4)
+            );
+          ''');
+          await db.execute('''
+            CREATE TABLE bills (
+              id TEXT PRIMARY KEY,
+              bank TEXT NOT NULL,
+              card_last4 TEXT NOT NULL,
+              total_amount REAL NOT NULL,
+              minimum_amount REAL NOT NULL,
+              due_date INTEGER NOT NULL,
+              status TEXT NOT NULL,
+              currency TEXT NOT NULL,
+              created_at INTEGER NOT NULL
+            );
+          ''');
+        },
+      );
+
+      final helper = DatabaseHelper.inMemory();
+      await helper.testOnUpgrade(db, 1, 5);
+
+      // Verify v2 columns on budgets
+      final budgetCols = await db.rawQuery('PRAGMA table_info(budgets)');
+      final budgetNames = budgetCols.map((c) => c['name'] as String).toList();
+      expect(budgetNames.contains('notes'), isTrue);
+      expect(budgetNames.contains('is_recurring'), isTrue);
+
+      // Verify v3 and v4 columns on parsed_transactions
+      final txnCols =
+          await db.rawQuery('PRAGMA table_info(parsed_transactions)');
+      final txnNames = txnCols.map((c) => c['name'] as String).toList();
+      expect(txnNames.contains('transfer_account_id'), isTrue);
+      expect(txnNames.contains('reconciliation_notes'), isTrue);
+      expect(txnNames.contains('sms_received_at'), isTrue);
+      expect(txnNames.contains('statement_date'), isTrue);
+
+      // Verify v4 columns on cards
+      final cardCols = await db.rawQuery('PRAGMA table_info(cards)');
+      final cardNames = cardCols.map((c) => c['name'] as String).toList();
+      expect(cardNames.contains('statement_due'), isTrue);
+      expect(cardNames.contains('current_due'), isTrue);
+      expect(cardNames.contains('last_statement_date'), isTrue);
+
+      // Verify v5 columns on bills
+      final billCols = await db.rawQuery('PRAGMA table_info(bills)');
+      final billNames = billCols.map((c) => c['name'] as String).toList();
+      expect(billNames.contains('paid_amount'), isTrue);
+      expect(billNames.contains('source_date'), isTrue);
+      expect(billNames.contains('biller_name'), isTrue);
+      expect(billNames.contains('account_number'), isTrue);
+
+      await db.close();
+      await helper.close();
     });
   });
 }

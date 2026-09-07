@@ -116,7 +116,7 @@
     "sender": "HDFCBK",
     "timestamp": "2026-01-21T11:00:00Z",
     "expected": {
-      "type": "debit",
+      "type": "investmentTransfer",
       "bank": "HDFC",
       "account_last4": "0564",
       "amount": 30000.00,
@@ -182,7 +182,7 @@
     "sender": "HDFCBK",
     "timestamp": "2025-07-22T19:42:12Z",
     "expected": {
-      "type": "fastag",
+      "type": "fastagFunding",
       "bank": "HDFC",
       "fastag_id": "19000011559872",
       "amount": 100.00,
@@ -293,6 +293,280 @@
       "date": "2026-01-18",
       "merchant": "AMAZON PAY IN E",
       "available_limit": 196021.82,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_axis_spend_1",
+    "raw_sms": "Spent INR 320 Axis Bank Card no. XX9478 08-09-25 09:55:45 IST Reliance Re Avl Limit: INR 495864.75 Not you? SMS BLOCK 9478 to 919951860002",
+    "sender": "AxisBk",
+    "timestamp": "2025-09-08T09:55:45Z",
+    "expected": {
+      "type": "purchase",
+      "bank": "AXIS",
+      "card_last4": "9478",
+      "amount": 320.0,
+      "available_limit": 495864.75,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_hdfc_bill_1",
+    "raw_sms": "HDFC Bank Credit Card XX9137 Statement: Total due: Rs.35,616.00 Min.due: Rs.1,790.00 Pay by 05-12-2025 View: https://hdfcbk.io/HDFCBK/jf/493d5122",
+    "sender": "HDFCBK",
+    "timestamp": "2025-11-20T10:00:00Z",
+    "expected": {
+      "type": "bill",
+      "bank": "HDFC",
+      "card_last4": "9137",
+      "bill_total": 35616.0,
+      "bill_minimum": 1790.0,
+      "bill_due_date": "2025-12-05",
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_axis_bill_1",
+    "raw_sms": "Statement for your Axis Bank Credit Card XX9478 of INR 9732.47 has been generated with due date 05-07-25. View the transaction details @ https://ccm.axbk.in/AXISBK/oztXoQJu & to view the fees & charges, visit https://ccm.axbk.in/AXISBK/ApCh7aMn ; Minimum amount due is INR 195.",
+    "sender": "AxisBk",
+    "timestamp": "2025-06-20T10:00:00Z",
+    "expected": {
+      "type": "bill",
+      "bank": "AXIS",
+      "card_last4": "9478",
+      "bill_total": 9732.47,
+      "bill_minimum": 195.0,
+      "bill_due_date": "2025-07-05",
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_axis_bill_2",
+    "raw_sms": "Statement for your Axis Bank Credit Card no. XX3345 has been generated. Due on: 03-10-25 Total amt: INR Dr. 1180.00 Min amt due: INR Dr. 1180.00 To pay, visit axisbank.com/ccpaynow",
+    "sender": "AxisBk",
+    "timestamp": "2025-09-20T10:00:00Z",
+    "expected": {
+      "type": "bill",
+      "bank": "AXIS",
+      "card_last4": "3345",
+      "bill_total": 1180.0,
+      "bill_minimum": 1180.0,
+      "bill_due_date": "2025-10-03",
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_sbi_bill_1",
+    "raw_sms": "E-statement of SBI Credit Card ending XX36 dated 09/06/2025 has been mailed. If not received, SMS ENRS to 5676791. Total Amt Due Rs 3595; Min Amt Due Rs 200; Payable by 29/06/2025. Click https://sbicard.com/quickpaynet to pay your bill",
+    "sender": "SBICRD",
+    "timestamp": "2025-06-09T10:00:00Z",
+    "expected": {
+      "type": "bill",
+      "bank": "SBI",
+      "card_last4": "36",
+      "bill_total": 3595.0,
+      "bill_minimum": 200.0,
+      "bill_due_date": "2025-06-29",
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_hdfc_bill_2",
+    "raw_sms": "E-Statement Generated! For HDFC Bank Credit Card 1355.Due date:04/NOV/2021.Total Due:Rs.3121.Min Due:Rs.3092.For Statement: hdfcbk.io/k/DUvfZQfSl9P",
+    "sender": "HDFCBK",
+    "timestamp": "2021-10-20T10:00:00Z",
+    "expected": {
+      "type": "bill",
+      "bank": "HDFC",
+      "card_last4": "1355",
+      "bill_total": 3121.0,
+      "bill_minimum": 3092.0,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_onecard_bill_1",
+    "raw_sms": "Hi Dayanand Thammaiah, as per your OneCard statement, the Total Amount Due is Rs. 469.32, and the payment due date is 02-08-2022. You can make the payment from the app even now 1cardapp.page.link/repay. In case of any queries, call us on 18002109111. Team OneCard",
+    "sender": "ONECRD",
+    "timestamp": "2022-07-25T10:00:00Z",
+    "expected": {
+      "type": "bill",
+      "bank": "ONECARD",
+      "bill_total": 469.32,
+      "bill_due_date": "2022-08-02",
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_rbl_bill_1",
+    "raw_sms": "Important! Your payment for RBL Bank Credit Card XXXXXXXXXXXXXXX4223 is due on 11-Aug-2022. Total Amount due is Rs. 1758.91. Please make a payment for Minimum Amount Due of Rs. 200 to enjoy uninterrupted services on your Card by visiting https://rzp.io/i/rgUySCDb to pay now. Please ignore if already paid.",
+    "sender": "RBLBNK",
+    "timestamp": "2022-08-01T10:00:00Z",
+    "expected": {
+      "type": "bill",
+      "bank": "RBL",
+      "card_last4": "4223",
+      "bill_total": 1758.91,
+      "bill_minimum": 200.0,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_hdfc_deposit_1",
+    "raw_sms": "Update! INR 4,59,031.00 deposited in HDFC Bank A/c XX0564 on 31-DEC-25 for ACH C- HARMANCONSRCRINPLT-FFS B 2 Dec 25.Avl bal INR 5,11,120.25. Cheque deposits in A/C are subject to clearing",
+    "sender": "HDFCBK",
+    "timestamp": "2025-12-31T10:00:00Z",
+    "expected": {
+      "bank": "HDFC",
+      "account_last4": "0564",
+      "amount": 459031.0,
+      "balance": 511120.25,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_hdfc_upi_1",
+    "raw_sms": "Credit Alert!Rs.20000.00 credited to HDFC Bank A/c XX0564 on 10-08-25 from VPA dayahere@sbi (UPI 100239154768)",
+    "sender": "HDFCBK",
+    "timestamp": "2025-08-10T10:00:00Z",
+    "expected": {
+      "type": "credit",
+      "bank": "HDFC",
+      "account_last4": "0564",
+      "amount": 20000.0,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_idfc_credit_1",
+    "raw_sms": "Your A/C XXXXX501717 is credited with INR 53,380.00 on 06/01/26 16:03. Your new balance is INR 7,08,908.98. Team IDFC FIRST Bank",
+    "sender": "IDFCFB",
+    "timestamp": "2026-01-06T16:03:00Z",
+    "expected": {
+      "type": "credit",
+      "bank": "IDFC_FIRST",
+      "account_last4": "1717",
+      "amount": 53380.0,
+      "balance": 708908.98,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_idfc_interest_1",
+    "raw_sms": "Monthly interest of Rs.518.00 earned on your Savings A/c XX1717 has been credited to your A/C on 31/12/25. New bal: Rs.2,05,528.98. IDFC FIRST Bank",
+    "sender": "IDFCFB",
+    "timestamp": "2025-12-31T18:00:00Z",
+    "expected": {
+      "type": "interest",
+      "bank": "IDFC_FIRST",
+      "account_last4": "1717",
+      "amount": 518.0,
+      "balance": 205528.98,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_indusind_reversal_1",
+    "raw_sms": "Dear Customer, txn on IndusInd Bank Credit Card ending 4351 for USD 10.00 AT Github, inc. has been reversed/credited - IndusInd Bank",
+    "sender": "INDBNK",
+    "timestamp": "2026-01-15T12:00:00Z",
+    "expected": {
+      "type": "reversal",
+      "bank": "INDUSIND",
+      "card_last4": "4351",
+      "amount": 10.0,
+      "currency": "USD",
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_icici_refund_1",
+    "raw_sms": "ICICI Bank Credit Card XX4000 credited/refunded with Rs 190.30 on 16-JUL-25. To transfer, call Customer Care in 7 days or get it adjusted in next statement",
+    "sender": "ICICIB",
+    "timestamp": "2025-07-16T10:00:00Z",
+    "expected": {
+      "type": "refund",
+      "bank": "ICICI",
+      "card_last4": "4000",
+      "amount": 190.30,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_icici_payment_1",
+    "raw_sms": "Payment of Rs 6,306.02 has been received on your ICICI Bank Credit Card XX4000 through Bharat Bill Payment System on 28-NOV-25.",
+    "sender": "ICICIB",
+    "timestamp": "2025-11-28T10:00:00Z",
+    "expected": {
+      "type": "billPayment",
+      "bank": "ICICI",
+      "card_last4": "4000",
+      "amount": 6306.02,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_axis_payment_1",
+    "raw_sms": "Payment of INR 62194 has been received towards your Axis Bank Credit Card XX9478 on 29-10-25 - Axis Bank",
+    "sender": "AxisBk",
+    "timestamp": "2025-10-29T10:00:00Z",
+    "expected": {
+      "type": "billPayment",
+      "bank": "AXIS",
+      "card_last4": "9478",
+      "amount": 62194.0,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_axis_cashback_1",
+    "raw_sms": "Congratulations! Cashback of INR 295 has been credited to your Axis Bank Flipkart Credit Card XX9478 towards your last month spends - Axis Bank",
+    "sender": "AxisBk",
+    "timestamp": "2025-11-05T10:00:00Z",
+    "expected": {
+      "type": "cashback",
+      "bank": "AXIS",
+      "card_last4": "9478",
+      "amount": 295.0,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_sbi_spend_1",
+    "raw_sms": "Rs.3,595.00 spent on your SBI Credit Card ending 7036 at Flipkart Internet Pvt on 08/06/25. Trxn. not done by you? Report at https://sbicard.com/Dispute",
+    "sender": "SBICRD",
+    "timestamp": "2025-06-08T10:00:00Z",
+    "expected": {
+      "type": "purchase",
+      "bank": "SBI",
+      "card_last4": "7036",
+      "amount": 3595.0,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_sbi_spend_2",
+    "raw_sms": "Rs.15,590.85 spent on your SBI Credit Card ending 7036 at AMAZONPAYINDIAPRIVA on 22/09/25. Trxn. not done by you? Report at https://sbicard.com/Dispute",
+    "sender": "SBICRD",
+    "timestamp": "2025-09-22T10:00:00Z",
+    "expected": {
+      "type": "purchase",
+      "bank": "SBI",
+      "card_last4": "7036",
+      "amount": 15590.85,
+      "confidence": "HIGH"
+    }
+  },
+  {
+    "id": "user_real_sbi_payment_1",
+    "raw_sms": "We have received payment of Rs.5,696.00 via BBPS & the same has been credited to your SBI Credit Card. Your available limit is Rs.372,000.27.",
+    "sender": "SBICRD",
+    "timestamp": "2025-11-25T10:00:00Z",
+    "expected": {
+      "type": "billPayment",
+      "bank": "SBI",
+      "amount": 5696.0,
+      "available_limit": 372000.27,
       "confidence": "HIGH"
     }
   }

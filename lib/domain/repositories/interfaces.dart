@@ -5,6 +5,7 @@ import '../entities/correction.dart';
 import '../entities/credit_card.dart';
 import '../entities/fastag_record.dart';
 import '../entities/financial_summary.dart';
+import '../entities/ingestion_checkpoint.dart';
 import '../entities/parsed_transaction.dart';
 import '../entities/sms_record.dart';
 import '../enums/bank.dart';
@@ -47,18 +48,23 @@ abstract class IAccountRepository {
   Future<void> upsertAccount(Account account);
   Future<List<Account>> getAllAccounts();
   Future<Account?> getAccountByBankAndLast4(Bank bank, String last4);
+  Future<List<Account>> getAccountsAsOf(DateTime asOf);
 }
 
 abstract class ICardRepository {
   Future<void> upsertCard(CreditCard card);
   Future<List<CreditCard>> getAllCards();
   Future<CreditCard?> getCardByBankAndLast4(Bank bank, String last4);
+  Future<List<CreditCard>> getCardsByBank(Bank bank);
+  Future<List<CreditCard>> getCardsAsOf(DateTime asOf);
 }
 
 abstract class IBillRepository {
   Future<void> upsertBill(Bill bill);
   Future<List<Bill>> getAllBills();
+  Future<List<Bill>> getBillsByCard(Bank bank, String cardLast4);
   Future<List<Bill>> getUpcomingBills({int days = 30});
+  Future<List<Bill>> getBillsByDateRange(DateTime start, DateTime end);
 }
 
 abstract class IFastagRepository {
@@ -77,4 +83,13 @@ abstract class ICorrectionRepository {
 abstract class IBudgetRepository {
   Future<void> upsertBudget(Budget budget);
   Future<List<Budget>> getBudgetsForMonth(int month, int year);
+}
+
+abstract class IIngestionRepository {
+  Future<IngestionCheckpoint?> getCheckpoint({String id = 'primary'});
+  Future<void> saveCheckpoint(IngestionCheckpoint checkpoint);
+  Future<void> clearCheckpoint({String id = 'primary'});
+  Future<void> saveHistory(IngestionHistoryRecord record);
+  Future<List<IngestionHistoryRecord>> getHistory({int limit = 50});
+  Future<void> deleteHistory(String id);
 }

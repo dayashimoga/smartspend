@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartspend/domain/entities/bill.dart';
 import 'package:smartspend/domain/entities/financial_summary.dart';
 import 'package:smartspend/domain/entities/parsed_transaction.dart';
 import 'package:smartspend/domain/enums/bank.dart';
@@ -10,6 +11,8 @@ import 'package:smartspend/presentation/providers/app_providers.dart';
 import 'package:smartspend/presentation/screens/dashboard/dashboard_screen.dart';
 
 void main() {
+  final now = DateTime.now();
+
   final sampleTxns = [
     ParsedTransaction(
       id: 'txn_dash_1',
@@ -41,6 +44,17 @@ void main() {
     ),
   ];
 
+  final sampleBills = [
+    Bill(
+      id: 'bill_dash_1',
+      bank: Bank.hdfc,
+      cardLast4: '9137',
+      totalAmount: 3494.78,
+      dueDate: now.add(const Duration(days: 5)),
+      createdAt: now,
+    ),
+  ];
+
   const fullSummary = FinancialSummary(
     totalIncome: 85000.0,
     totalExpense: 2500.0,
@@ -58,16 +72,26 @@ void main() {
 
   group('DashboardScreen Comprehensive UI Test Suite', () {
     testWidgets(
-        'Renders all summary metrics, banners, and recent transactions in Dark Mode',
+        'Renders all summary metrics, banners, upcoming bills, and recent transactions in Dark Mode',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             themeModeProvider.overrideWith((ref) => ThemeMode.dark),
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(fullSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(fullSummary)),
             recentTransactionsProvider
                 .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredBillsProvider
+                .overrideWith((ref) => Future.value(sampleBills)),
           ],
           child: const MaterialApp(
             home: DashboardScreen(),
@@ -82,6 +106,10 @@ void main() {
       expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
       expect(find.byIcon(Icons.sync), findsOneWidget);
 
+      // Verify TimePeriodSelector presets
+      expect(find.text('Month'), findsOneWidget);
+      expect(find.text('Today'), findsOneWidget);
+
       // Verify Hero Summary and Cards
       expect(find.text('Net Cashflow'), findsOneWidget);
       expect(find.text('Income'), findsOneWidget);
@@ -89,9 +117,14 @@ void main() {
       expect(find.text('Bank Balances'), findsOneWidget);
       expect(find.text('Card Spent'), findsOneWidget);
 
-      // Verify Banners
-      expect(find.text('2 transaction(s) need your review'), findsOneWidget);
-      expect(find.text('1 upcoming credit card bills due'), findsOneWidget);
+      // Verify Unresolved Warning Banner
+      expect(find.text('2 unresolved transaction(s) excluded from totals'),
+          findsOneWidget);
+
+      // Verify Prominent Upcoming Bills Section
+      expect(find.text('Upcoming Bills'), findsOneWidget);
+      expect(find.text('HDFC Bank Card'), findsOneWidget);
+      expect(find.text('•••• 9137'), findsOneWidget);
 
       // Verify Recent Transactions Section
       expect(find.text('Recent Transactions'), findsOneWidget);
@@ -106,13 +139,22 @@ void main() {
     testWidgets(
         'Renders in Light Mode and displays empty state when no transactions',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             themeModeProvider.overrideWith((ref) => ThemeMode.light),
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(emptySummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(emptySummary)),
             recentTransactionsProvider.overrideWith((ref) => Future.value([])),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value([])),
+            filteredBillsProvider.overrideWith((ref) => Future.value([])),
           ],
           child: const MaterialApp(
             home: DashboardScreen(),
@@ -125,8 +167,9 @@ void main() {
 
       expect(find.text('SmartSpend'), findsOneWidget);
       expect(find.text('Net Cashflow'), findsOneWidget);
-      expect(find.text('No transactions ingested yet'), findsOneWidget);
-      expect(find.text('2 transaction(s) need your review'), findsNothing);
+      expect(find.text('No transactions in this period'), findsOneWidget);
+      expect(find.text('2 unresolved transaction(s) excluded from totals'),
+          findsNothing);
     });
 
     testWidgets('Renders loading spinner when isSyncing is active',
@@ -137,7 +180,12 @@ void main() {
             isSyncingProvider.overrideWith((ref) => true),
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(emptySummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(emptySummary)),
             recentTransactionsProvider.overrideWith((ref) => Future.value([])),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value([])),
+            filteredBillsProvider.overrideWith((ref) => Future.value([])),
           ],
           child: const MaterialApp(
             home: DashboardScreen(),
@@ -161,8 +209,14 @@ void main() {
           overrides: [
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(fullSummary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(fullSummary)),
             recentTransactionsProvider
                 .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value(sampleTxns)),
+            filteredBillsProvider
+                .overrideWith((ref) => Future.value(sampleBills)),
           ],
           child: const MaterialApp(
             home: DashboardScreen(),

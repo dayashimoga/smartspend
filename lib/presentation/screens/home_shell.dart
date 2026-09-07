@@ -30,6 +30,9 @@ class HomeShell extends ConsumerWidget {
       body: child,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
+        type: BottomNavigationBarType.fixed,
+        selectedFontSize: 11,
+        unselectedFontSize: 10,
         onTap: (index) {
           switch (index) {
             case 0:
@@ -73,13 +76,17 @@ class HomeShell extends ConsumerWidget {
           BottomNavigationBarItem(
             icon: Badge(
               isLabelVisible: reviewCount > 0,
-              label: Text(reviewCount.toString()),
+              largeSize: 16,
+              label: Text(reviewCount > 99 ? '99+' : reviewCount.toString(),
+                  style: const TextStyle(fontSize: 10)),
               backgroundColor: AppColors.warning,
               child: const Icon(Icons.rate_review_outlined),
             ),
             activeIcon: Badge(
               isLabelVisible: reviewCount > 0,
-              label: Text(reviewCount.toString()),
+              largeSize: 16,
+              label: Text(reviewCount > 99 ? '99+' : reviewCount.toString(),
+                  style: const TextStyle(fontSize: 10)),
               backgroundColor: AppColors.warning,
               child: const Icon(Icons.rate_review),
             ),

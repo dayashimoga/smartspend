@@ -44,10 +44,18 @@ void main() {
             dbHelperProvider.overrideWithValue(dbHelper),
             financialSummaryProvider
                 .overrideWith((ref) => Future.value(summary)),
+            filteredFinancialSummaryProvider
+                .overrideWith((ref) => Future.value(summary)),
             recentTransactionsProvider.overrideWith((ref) => Future.value([])),
             allTransactionsProvider.overrideWith((ref) => Future.value([])),
+            filteredTransactionsProvider
+                .overrideWith((ref) => Future.value([])),
             accountsProvider.overrideWith((ref) => Future.value([])),
+            filteredAccountsProvider.overrideWith((ref) => Future.value([])),
             cardsProvider.overrideWith((ref) => Future.value([])),
+            filteredCardsProvider.overrideWith((ref) => Future.value([])),
+            billsProvider.overrideWith((ref) => Future.value([])),
+            filteredBillsProvider.overrideWith((ref) => Future.value([])),
             needsReviewTransactionsProvider
                 .overrideWith((ref) => Future.value([])),
           ],
