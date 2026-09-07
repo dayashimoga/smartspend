@@ -12,18 +12,18 @@ class RegexPatterns {
 
   // Card patterns
   static final RegExp cardLast4 = RegExp(
-    r'(?:Card\s*(?:no\.?)?\s*(?:ending|xx|x)?|ending\s*|XX|x)\s*([0-9]{4})\b',
+    r'(?:Card\s*(?:no\.?)?\s*(?:ending(?:\s+(?:with|in))?|[Xx*.-]+)?|ending(?:\s+(?:with|in))?\s*|[Xx*]{2,})\s*([0-9]{4})\b',
     caseSensitive: false,
   );
 
   static final RegExp accountLast4 = RegExp(
-    r'(?:A/c|Account|Acct)\s*(?:no\.?)?\s*(?:XX|\*|ending\s*)?\s*([0-9]{3,4})\b',
+    r'(?:A/c|Account|Acct)\s*(?:no\.?)?\s*[:.-]?\s*(?:ending(?:\s+(?:with|in))?|[Xx*.-]+)?\s*([0-9]{3,4})\b',
     caseSensitive: false,
   );
 
   // Balances
   static final RegExp availableBalance = RegExp(
-    r'(?:available\s*balance|avl\s*bal|bal\s*Rs\.?|new\s*bal|wallet\s*bal|available\s*bal)\s*(?:is|:)?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
+    r'(?:available\s*balance|avl\s*bal|bal\s*Rs\.?|new\s*bal|wallet\s*bal|available\s*bal)(?:[^\n\r]*?(?:as\s+on[^\n\r]*?)?\s*(?:is|:))?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
@@ -39,17 +39,17 @@ class RegexPatterns {
 
   // Bill patterns
   static final RegExp billTotalDue = RegExp(
-    r'(?:Total\s*(?:due\s*amt|amount(?:\s*is)?|of)|Total\s*due)\s*(?:is|:)?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
+    r'(?:Total\s*(?:due(?:\s*amt)?|amount(?:\s*due)?(?:\s*is)?|of|amt\s*due)|Total\s*due|Payment\s+of|bill\s*(?:amt|amount)?\s*(?:of|is|:)?)\s*(?:is|:)?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
   static final RegExp billMinDue = RegExp(
-    r'(?:Min(?:imum)?\s*(?:due\s*amt|amount(?:\s*is)?|of)|Min\s*due)\s*(?:is|:)?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
+    r'(?:Min(?:imum)?\s*(?:due(?:\s*amt)?|amount(?:\s*due)?(?:\s*is)?|of|amt\s*due)|Min\s*due)\s*(?:is|:)?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
   static final RegExp billDueDate = RegExp(
-    r'(?:due\s*(?:by|date|on)|payable\s*by)\s*(?:is|:)?\s*([0-9]{1,2}[-/][a-zA-Z0-9]{2,3}[-/][0-9]{2,4})',
+    r'(?:due\s*(?:by|date|on)|payable\s*by|pay\s*by|pay\s*before|on\s*or\s*before|by)\s*(?:is|:)?\s*([0-9]{1,2}[/-][a-zA-Z0-9]{2,3}[/-][0-9]{2,4}|[0-9]{1,2}-[0-9]{1,2}-[0-9]{2,4}|[0-9]{1,2}\s+[a-zA-Z]{3}\s+[0-9]{2,4})',
     caseSensitive: false,
   );
 

@@ -379,7 +379,6 @@ class IncrementalIngestionService {
         for (var parsed in nonDuplicateTxns) {
           final historical = await _txnRepo.getAllTransactions(
             limit: 100,
-            bank: parsed.bank != Bank.unknown ? parsed.bank : null,
           );
           final match = Reconciler.reconcileSingle(parsed, historical);
           parsed = match.updatedCurrent;
@@ -624,11 +623,22 @@ class IncrementalIngestionService {
       final hasExisting = existingRows.isNotEmpty;
       final existing = hasExisting ? Account.fromMap(existingRows.first) : null;
 
+      final tTime = t.smsReceivedAt ?? t.transactionDate;
+      final isNewerOrEqual = existing == null ||
+          !existing.isBalanceReliable ||
+          !tTime.isBefore(existing.lastUpdated);
+
       if (t.balance != null || existing != null) {
-        final newBalance = t.balance ?? existing?.currentBalance ?? 0.0;
-        final isReliable =
-            t.balance != null || (existing?.isBalanceReliable ?? false);
-        if (t.balance != null) balanceExtracted = true;
+        final newBalance = (isNewerOrEqual && t.balance != null)
+            ? t.balance!
+            : (existing?.currentBalance ?? t.balance ?? 0.0);
+        final isReliable = (t.balance != null && isNewerOrEqual) ||
+            (existing?.isBalanceReliable ?? false);
+        final lastUpd = (isNewerOrEqual && t.balance != null)
+            ? tTime
+            : (existing?.lastUpdated ?? tTime);
+
+        if (t.balance != null && isNewerOrEqual) balanceExtracted = true;
 
         final acct = Account(
           id: existing?.id ?? const Uuid().v4(),
@@ -637,7 +647,7 @@ class IncrementalIngestionService {
           accountType: t.type == TransactionType.salary ? 'Salary' : 'Savings',
           currentBalance: newBalance,
           currency: t.currency,
-          lastUpdated: t.transactionDate,
+          lastUpdated: lastUpd,
           isBalanceReliable: isReliable,
         );
 
@@ -674,16 +684,24 @@ class IncrementalIngestionService {
           ? CreditCard.fromMap(existingRows.first)
           : null;
 
-      double? updatedOutstanding = t.outstanding ?? existing?.outstanding;
+      final isNewerTxn =
+          existing == null || !t.transactionDate.isBefore(existing.lastUpdated);
+      double? updatedOutstanding = (isNewerTxn && t.outstanding != null)
+          ? t.outstanding
+          : (existing?.outstanding ?? t.outstanding);
       double? updatedStatementDue = existing?.statementDue;
       double? updatedCurrentDue = existing?.currentDue;
       DateTime? updatedStatementDate = existing?.lastStatementDate;
 
       if (t.type == TransactionType.bill) {
-        updatedStatementDue = t.billTotal ?? t.amount;
-        updatedCurrentDue = t.billMinimum ?? 0.0;
-        updatedStatementDate = t.statementDate ?? t.transactionDate;
-        updatedOutstanding = updatedStatementDue;
+        final isNewerStatement = existing?.lastStatementDate == null ||
+            !t.transactionDate.isBefore(existing!.lastStatementDate!);
+        if (isNewerStatement) {
+          updatedStatementDue = t.billTotal ?? t.amount;
+          updatedCurrentDue = t.billMinimum ?? 0.0;
+          updatedStatementDate = t.statementDate ?? t.transactionDate;
+          updatedOutstanding = updatedStatementDue;
+        }
       } else if (t.type == TransactionType.billPayment) {
         if (updatedStatementDue != null) {
           updatedStatementDue =
@@ -718,14 +736,16 @@ class IncrementalIngestionService {
         id: existing?.id ?? const Uuid().v4(),
         bank: t.bank,
         last4: resolvedCardLast4,
-        availableLimit: t.availableLimit ?? existing?.availableLimit,
+        availableLimit: (isNewerTxn && t.availableLimit != null)
+            ? t.availableLimit
+            : (existing?.availableLimit ?? t.availableLimit),
         totalLimit: existing?.totalLimit,
         outstanding: updatedOutstanding,
         statementDue: updatedStatementDue,
         currentDue: updatedCurrentDue,
         lastStatementDate: updatedStatementDate,
         currency: t.currency,
-        lastUpdated: t.transactionDate,
+        lastUpdated: isNewerTxn ? t.transactionDate : existing.lastUpdated,
       );
 
       await txn.insert(
@@ -737,17 +757,34 @@ class IncrementalIngestionService {
 
     // 3. Bill
     if (t.type == TransactionType.bill &&
-        t.cardLast4 != null &&
-        t.billDueDate != null) {
+        (t.cardLast4 != null || resolvedCardLast4 != null)) {
+      final card4 = t.cardLast4 ?? resolvedCardLast4!;
+      final dueDate =
+          t.billDueDate ?? t.transactionDate.add(const Duration(days: 20));
+
+      final existingBills = await txn.query(
+        'bills',
+        where: 'bank = ? AND card_last4 = ? AND due_date = ?',
+        whereArgs: [t.bank.name, card4, dueDate.millisecondsSinceEpoch],
+        limit: 1,
+      );
+
+      final billId = existingBills.isNotEmpty
+          ? existingBills.first['id'] as String
+          : const Uuid().v4();
+
       final bill = Bill(
-        id: const Uuid().v4(),
+        id: billId,
         bank: t.bank,
-        cardLast4: t.cardLast4!,
+        cardLast4: card4,
         totalAmount: t.billTotal ?? t.amount,
         minimumAmount: t.billMinimum ?? 0.0,
-        dueDate: t.billDueDate!,
+        dueDate: dueDate,
         currency: t.currency,
-        createdAt: DateTime.now(),
+        createdAt: existingBills.isNotEmpty
+            ? DateTime.fromMillisecondsSinceEpoch(
+                existingBills.first['created_at'] as int)
+            : DateTime.now(),
       );
       final reconciledBill = Reconciler.reconcileBill(bill);
       await txn.insert(

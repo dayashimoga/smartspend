@@ -114,7 +114,6 @@ class IngestSmsUseCase {
       // Step 5: Real-time reconciliation against historical transactions
       final historicalCandidates = await _txnRepo.getAllTransactions(
         limit: 100,
-        bank: parsed.bank != Bank.unknown ? parsed.bank : null,
       );
       final match = Reconciler.reconcileSingle(parsed, historicalCandidates);
       parsed = match.updatedCurrent;
@@ -151,10 +150,22 @@ class IngestSmsUseCase {
     if (txn.accountLast4 != null && txn.bank != Bank.unknown) {
       final existing =
           await _acctRepo.getAccountByBankAndLast4(txn.bank, txn.accountLast4!);
-      final newBalance = txn.balance ?? existing?.currentBalance ?? 0.0;
 
-      // Only update if balance is actually provided or existing account exists
+      final tTime = txn.smsReceivedAt ?? txn.transactionDate;
+      final isNewerOrEqual = existing == null ||
+          !existing.isBalanceReliable ||
+          !tTime.isBefore(existing.lastUpdated);
+
       if (txn.balance != null || existing != null) {
+        final newBalance = (isNewerOrEqual && txn.balance != null)
+            ? txn.balance!
+            : (existing?.currentBalance ?? txn.balance ?? 0.0);
+        final isReliable = (txn.balance != null && isNewerOrEqual) ||
+            (existing?.isBalanceReliable ?? false);
+        final lastUpd = (isNewerOrEqual && txn.balance != null)
+            ? tTime
+            : (existing?.lastUpdated ?? tTime);
+
         await _acctRepo.upsertAccount(
           Account(
             id: existing?.id ?? const Uuid().v4(),
@@ -164,9 +175,8 @@ class IngestSmsUseCase {
                 txn.type == TransactionType.salary ? 'Salary' : 'Savings',
             currentBalance: newBalance,
             currency: txn.currency,
-            lastUpdated: txn.transactionDate,
-            isBalanceReliable:
-                txn.balance != null || (existing?.isBalanceReliable ?? false),
+            lastUpdated: lastUpd,
+            isBalanceReliable: isReliable,
           ),
         );
       }
@@ -186,16 +196,24 @@ class IngestSmsUseCase {
       final existing =
           await _cardRepo.getCardByBankAndLast4(txn.bank, resolvedCardLast4);
 
-      double? updatedOutstanding = txn.outstanding ?? existing?.outstanding;
+      final isNewerTxn = existing == null ||
+          !txn.transactionDate.isBefore(existing.lastUpdated);
+      double? updatedOutstanding = (isNewerTxn && txn.outstanding != null)
+          ? txn.outstanding
+          : (existing?.outstanding ?? txn.outstanding);
       double? updatedStatementDue = existing?.statementDue;
       double? updatedCurrentDue = existing?.currentDue;
       DateTime? updatedStatementDate = existing?.lastStatementDate;
 
       if (txn.type == TransactionType.bill) {
-        updatedStatementDue = txn.billTotal ?? txn.amount;
-        updatedCurrentDue = txn.billMinimum ?? 0.0;
-        updatedStatementDate = txn.statementDate ?? txn.transactionDate;
-        updatedOutstanding = updatedStatementDue;
+        final isNewerStatement = existing?.lastStatementDate == null ||
+            !txn.transactionDate.isBefore(existing!.lastStatementDate!);
+        if (isNewerStatement) {
+          updatedStatementDue = txn.billTotal ?? txn.amount;
+          updatedCurrentDue = txn.billMinimum ?? 0.0;
+          updatedStatementDate = txn.statementDate ?? txn.transactionDate;
+          updatedOutstanding = updatedStatementDue;
+        }
       } else if (txn.type == TransactionType.billPayment) {
         // Payment made: reduce statement due and outstanding
         if (updatedStatementDue != null) {
@@ -224,31 +242,45 @@ class IngestSmsUseCase {
           id: existing?.id ?? const Uuid().v4(),
           bank: txn.bank,
           last4: resolvedCardLast4,
-          availableLimit: txn.availableLimit ?? existing?.availableLimit,
+          availableLimit: (isNewerTxn && txn.availableLimit != null)
+              ? txn.availableLimit
+              : (existing?.availableLimit ?? txn.availableLimit),
           totalLimit: existing?.totalLimit,
           outstanding: updatedOutstanding,
           statementDue: updatedStatementDue,
           currentDue: updatedCurrentDue,
           lastStatementDate: updatedStatementDate,
           currency: txn.currency,
-          lastUpdated: txn.transactionDate,
+          lastUpdated: isNewerTxn ? txn.transactionDate : existing.lastUpdated,
         ),
       );
     }
 
     // 3. Update Bill if applicable
     if (txn.type == TransactionType.bill &&
-        txn.cardLast4 != null &&
-        txn.billDueDate != null) {
+        (txn.cardLast4 != null || resolvedCardLast4 != null)) {
+      final card4 = txn.cardLast4 ?? resolvedCardLast4!;
+      final dueDate =
+          txn.billDueDate ?? txn.transactionDate.add(const Duration(days: 20));
+
+      final existingBills = await _billRepo.getBillsByCard(txn.bank, card4);
+      final matchingBill = existingBills.where((b) =>
+          b.dueDate.millisecondsSinceEpoch == dueDate.millisecondsSinceEpoch);
+
+      final billId =
+          matchingBill.isNotEmpty ? matchingBill.first.id : const Uuid().v4();
+
       final bill = Bill(
-        id: const Uuid().v4(),
+        id: billId,
         bank: txn.bank,
-        cardLast4: txn.cardLast4!,
+        cardLast4: card4,
         totalAmount: txn.billTotal ?? txn.amount,
         minimumAmount: txn.billMinimum ?? 0.0,
-        dueDate: txn.billDueDate!,
+        dueDate: dueDate,
         currency: txn.currency,
-        createdAt: DateTime.now(),
+        createdAt: matchingBill.isNotEmpty
+            ? matchingBill.first.createdAt
+            : DateTime.now(),
       );
       await _billRepo.upsertBill(Reconciler.reconcileBill(bill));
     }

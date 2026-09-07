@@ -74,7 +74,8 @@ enum TransactionType {
       this == TransactionType.debit ||
       this == TransactionType.purchase ||
       this == TransactionType.atm ||
-      this == TransactionType.fastag;
+      this == TransactionType.fastag ||
+      this == TransactionType.upi;
 
   /// True for external inflows (salary, interest, cashback, general credits).
   /// Excludes own-account transfers, reversals, and refunds.

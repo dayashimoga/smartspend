@@ -36,6 +36,8 @@ abstract class ITransactionRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool includeExcluded = false,
+    bool includeBills = true,
+    bool includePureBalances = true,
   });
   Future<List<ParsedTransaction>> getNeedsReviewTransactions();
   Future<List<ParsedTransaction>> getRecentTransactions({int limit = 10});

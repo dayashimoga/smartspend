@@ -119,6 +119,11 @@ class ParserPipeline {
         normalizedBody: normalized,
         smsTimestamp: timestamp,
       );
+      if (result != null &&
+          result.bank == Bank.unknown &&
+          detectedBank != Bank.unknown) {
+        result = result.copyWith(bank: detectedBank);
+      }
     }
 
     // If completely unparsable, return a safe unparsed transaction for review

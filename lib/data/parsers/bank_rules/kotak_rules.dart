@@ -20,44 +20,63 @@ class KotakRules extends BankRule {
     required DateTime smsTimestamp,
   }) {
     // 1. Kotak Credit Card Bill Statement
-    final billMatch = RegExp(
-      r'(?:Statement\s+for\s+(?:your\s+)?Kotak|Kotak\s+Bank\s+Credit\s+Card).*?(?:[Xx*]+|ending\s*)?(\d{4}).*?Total\s+(?:Amt\s+Due|due)\s*:?\s*(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?).*?(?:Min(?:imum)?\s+(?:Amt\s+Due|due)\s*:?\s*(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?))?.*?(?:Due\s+(?:Date|by|on)|Payable\s+by)\s*:?\s*([0-9]{1,2}[-/][a-zA-Z0-9]{2,3}[-/][0-9]{2,4})',
-      caseSensitive: false,
-    ).firstMatch(normalizedBody);
+    final isBill = (normalizedBody.toLowerCase().contains('kotak') ||
+            normalizedBody.toLowerCase().contains('card')) &&
+        (normalizedBody.toLowerCase().contains('total amt due') ||
+            normalizedBody.toLowerCase().contains('total due') ||
+            normalizedBody.toLowerCase().contains('payment of') ||
+            normalizedBody.toLowerCase().contains('statement') ||
+            normalizedBody.toLowerCase().contains('payable by') ||
+            normalizedBody.toLowerCase().contains('due date'));
 
-    if (billMatch != null) {
-      final cardLast4 = billMatch.group(1);
-      final total = AmountParser.parse(billMatch.group(2)) ?? 0.0;
-      final dueDate = DateParser.parse(billMatch.group(4));
-
-      double minDue = 0.0;
-      final minMatch = RegExp(
-        r'Min(?:imum)?\s+(?:Amt\s+Due|due)\s*:?\s*(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?)',
+    if (isBill) {
+      final billMatch = RegExp(
+        r'(?:Statement\s+for\s+(?:your\s+)?Kotak|Kotak\s+Bank\s+Credit\s+Card).*?(?:[Xx*]+|ending\s*)?(\d{4}).*?Total\s+(?:Amt\s+Due|due)\s*:?\s*(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?).*?(?:Min(?:imum)?\s+(?:Amt\s+Due|due)\s*:?\s*(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?))?.*?(?:Due\s+(?:Date|by|on)|Payable\s+by)\s*:?\s*([0-9]{1,2}[-/][a-zA-Z0-9]{2,3}[-/][0-9]{2,4})',
         caseSensitive: false,
       ).firstMatch(normalizedBody);
-      if (minMatch != null) {
-        minDue = AmountParser.parse(minMatch.group(1)) ?? 0.0;
-      }
 
-      return ParsedTransaction(
-        id: const Uuid().v4(),
-        rawSmsId: rawSmsId,
-        type: TransactionType.bill,
-        bank: Bank.kotak,
-        cardLast4: cardLast4,
-        amount: total,
-        currency: 'INR',
-        transactionDate: smsTimestamp,
-        smsReceivedAt: smsTimestamp,
-        billTotal: total,
-        billMinimum: minDue,
-        billDueDate: dueDate,
-        confidence: Confidence.high,
-        parserVersion: '1.0.0',
-        category: 'Credit Card Bill',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      final billMatchB = RegExp(
+        r'Payment\s+of\s+(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?)\s+is\s+due\s+on\s+your\s+Kotak\s+Bank\s+(?:Credit\s+)?Card\s*(?:[Xx*]+|ending\s*)?(\d{4})\s+by\s+([0-9]{1,2}[-/][a-zA-Z0-9]{2,3}[-/][0-9]{2,4})',
+        caseSensitive: false,
+      ).firstMatch(normalizedBody);
+
+      if (billMatch != null || billMatchB != null) {
+        final cardLast4 = billMatch?.group(1) ?? billMatchB?.group(2);
+        final total =
+            AmountParser.parse(billMatch?.group(2) ?? billMatchB?.group(1)) ??
+                0.0;
+        final dueDate =
+            DateParser.parse(billMatch?.group(4) ?? billMatchB?.group(3));
+
+        double minDue = 0.0;
+        final minMatch = RegExp(
+          r'Min(?:imum)?\s+(?:Amt\s+Due|due)\s*:?\s*(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?)',
+          caseSensitive: false,
+        ).firstMatch(normalizedBody);
+        if (minMatch != null) {
+          minDue = AmountParser.parse(minMatch.group(1)) ?? 0.0;
+        }
+
+        return ParsedTransaction(
+          id: const Uuid().v4(),
+          rawSmsId: rawSmsId,
+          type: TransactionType.bill,
+          bank: Bank.kotak,
+          cardLast4: cardLast4,
+          amount: total,
+          currency: 'INR',
+          transactionDate: smsTimestamp,
+          smsReceivedAt: smsTimestamp,
+          billTotal: total,
+          billMinimum: minDue,
+          billDueDate: dueDate,
+          confidence: Confidence.high,
+          parserVersion: '1.0.0',
+          category: 'Credit Card Bill',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }
     }
 
     // 2. Kotak Credit Card Spend
@@ -102,7 +121,49 @@ class KotakRules extends BankRule {
       );
     }
 
-    // 3. Kotak Bank Account Debit / Credit
+    // 3. Kotak Account Balance Alert
+    // "Bal in Kotak Bank A/c XX1234 as on 06-SEP-26 is INR 18,000.00."
+    final balAlertMatch = RegExp(
+      r'(?:the\s+balance|Available\s+Bal(?:ance)?|Bal)\s+in\s+Kotak\s+Bank\s+A(?:ccount|/c)\s*(?:no\.?|[Xx*]+|ending\s*)?\s*(\d{3,4}).*?is\s+(?:INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)',
+      caseSensitive: false,
+    ).firstMatch(normalizedBody);
+
+    if (balAlertMatch != null) {
+      final acctLast4 = balAlertMatch.group(1);
+      final balance = AmountParser.parse(balAlertMatch.group(2));
+
+      DateTime txnDate = smsTimestamp;
+      final asOnMatch = RegExp(
+        r'as\s+on\s+(?:yesterday:)?([0-9]{1,2}-[a-zA-Z]{3}-[0-9]{2,4})',
+        caseSensitive: false,
+      ).firstMatch(normalizedBody);
+      if (asOnMatch != null) {
+        final d = DateParser.parse(asOnMatch.group(1));
+        if (d != null) {
+          txnDate = DateTime(d.year, d.month, d.day, 23, 59, 59);
+        }
+      }
+
+      return ParsedTransaction(
+        id: const Uuid().v4(),
+        rawSmsId: rawSmsId,
+        type: TransactionType.unknown,
+        bank: Bank.kotak,
+        accountLast4: acctLast4,
+        amount: 0.0,
+        currency: 'INR',
+        transactionDate: txnDate,
+        smsReceivedAt: smsTimestamp,
+        balance: balance,
+        confidence: Confidence.high,
+        parserVersion: '1.0.0',
+        category: 'Account Balance',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    // 4. Kotak Bank Account Debit / Credit / UPI
     final acctMatch = RegExp(
       r'(?:Kotak\s+Bank\s+A/c|A/c)\s*(?:no\.?|[Xx*]+|ending\s*)?\s*(\d{3,4})\s+(?:has\s+been\s+)?(debited|credited)\s+(?:with|for)?\s*(?:Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?)\s+on\s+([0-9]{1,2}[-/][a-zA-Z0-9]{2,3}[-/][0-9]{2,4})|(?:Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)\s+(debited|credited)\s+(?:from|to)\s+Kotak\s+Bank\s+A/c\s*(?:no\.?|[Xx*]+|ending\s*)?\s*(\d{3,4})\s+on\s+([0-9]{1,2}[-/][a-zA-Z0-9]{2,3}[-/][0-9]{2,4})',
       caseSensitive: false,
@@ -119,22 +180,47 @@ class KotakRules extends BankRule {
           DateParser.parse(acctMatch.group(4) ?? acctMatch.group(8)) ??
               smsTimestamp;
 
+      final isUpi = normalizedBody.toLowerCase().contains('upi') ||
+          normalizedBody.toLowerCase().contains('vpa');
+
       final balMatch =
           RegexPatterns.availableBalance.firstMatch(normalizedBody);
       final balance =
           balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
 
+      // Extract merchant
+      String? merchant;
+      final merchantMatch = RegExp(
+        r'(?:to|at|transfer\s+to)\s+([A-Za-z0-9\s&._-]+?)(?:\.|\s+Avl|\s+ref|\s+by\s+UPI|$)',
+        caseSensitive: false,
+      ).firstMatch(normalizedBody);
+      if (merchantMatch != null) {
+        final cand = merchantMatch.group(1)?.trim();
+        if (cand != null &&
+            !cand.toLowerCase().contains('bank') &&
+            !cand.toLowerCase().contains('a/c')) {
+          merchant = cand;
+        }
+      }
+
+      final refMatch = RegexPatterns.referenceNumber.firstMatch(normalizedBody);
+      final ref = refMatch?.group(1);
+
       return ParsedTransaction(
         id: const Uuid().v4(),
         rawSmsId: rawSmsId,
-        type: isDebit ? TransactionType.debit : TransactionType.credit,
+        type: isDebit
+            ? (isUpi ? TransactionType.upi : TransactionType.debit)
+            : TransactionType.credit,
         bank: Bank.kotak,
         accountLast4: acctLast4,
         amount: amount,
         currency: 'INR',
         transactionDate: txnDate,
         smsReceivedAt: smsTimestamp,
+        merchant: merchant,
         balance: balance,
+        reference: ref,
         confidence: Confidence.high,
         parserVersion: '1.0.0',
         category: isDebit ? 'General Debit' : 'Income',

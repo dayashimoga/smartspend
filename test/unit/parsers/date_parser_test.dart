@@ -41,6 +41,25 @@ void main() {
       expect(d3!.year, equals(2026));
       expect(d3.month, equals(1));
       expect(d3.day, equals(21));
+
+      // 2-part date without year
+      final d4 = DateParser.parse('07-09', referenceYear: 2026);
+      expect(d4, isNotNull);
+      expect(d4!.year, equals(2026));
+      expect(d4.month, equals(9));
+      expect(d4.day, equals(7));
+
+      final d5 = DateParser.parse('07-Sep', referenceYear: 2026);
+      expect(d5, isNotNull);
+      expect(d5!.year, equals(2026));
+      expect(d5.month, equals(9));
+      expect(d5.day, equals(7));
+
+      final d6 = DateParser.parse('06-SEP-26');
+      expect(d6, isNotNull);
+      expect(d6!.year, equals(2026));
+      expect(d6.month, equals(9));
+      expect(d6.day, equals(6));
     });
 
     test('Parses date-time timestamps with hours, minutes, seconds', () {

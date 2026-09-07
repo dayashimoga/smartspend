@@ -199,8 +199,52 @@ class AxisRules extends BankRule {
       );
     }
 
-    // 5. Axis Bank Account Debit / Card Payment
+    // 5. Axis Account Balance Alert
+    // "Bal in Axis Bank A/c no. XX1234 as on 06-SEP-26 is INR 15,000.00."
+    // "Available Bal in Axis Bank A/c XX1234 as on yesterday:06-SEP-26 is INR 15,000.00."
+    final balAlertMatch = RegExp(
+      r'(?:the\s+balance|Available\s+Bal(?:ance)?|Bal)\s+in\s+(?:your\s+)?Axis\s+Bank\s+A(?:ccount|/c)\s*(?:no\.?\s*)?[Xx*]*(\d{4}).*?is\s+(?:INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)',
+      caseSensitive: false,
+    ).firstMatch(normalizedBody);
+
+    if (balAlertMatch != null) {
+      final acctLast4 = balAlertMatch.group(1);
+      final balance = AmountParser.parse(balAlertMatch.group(2));
+
+      DateTime txnDate = smsTimestamp;
+      final asOnMatch = RegExp(
+        r'as\s+on\s+(?:yesterday:)?([0-9]{1,2}-[a-zA-Z]{3}-[0-9]{2,4})',
+        caseSensitive: false,
+      ).firstMatch(normalizedBody);
+      if (asOnMatch != null) {
+        final d = DateParser.parse(asOnMatch.group(1));
+        if (d != null) {
+          txnDate = DateTime(d.year, d.month, d.day, 23, 59, 59);
+        }
+      }
+
+      return ParsedTransaction(
+        id: const Uuid().v4(),
+        rawSmsId: rawSmsId,
+        type: TransactionType.unknown,
+        bank: Bank.axis,
+        accountLast4: acctLast4,
+        amount: 0.0,
+        currency: 'INR',
+        transactionDate: txnDate,
+        smsReceivedAt: smsTimestamp,
+        balance: balance,
+        confidence: Confidence.high,
+        parserVersion: '1.0.0',
+        category: 'Account Balance',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    // 6. Axis Bank Account Debit / Card Payment / UPI
     // "Rs. 3,000.00 debited from Axis Bank A/c no. XX1234 on 16-01-26 for Card Payment Ref 222222."
+    // "INR 500.00 debited from Axis Bank A/c no. XX1234 on 05-09-26 to SWIGGY. Avl Bal INR 15,000.00."
     final debitMatch = RegExp(
       r'(?:Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)\s+debited\s+from\s+Axis\s+Bank\s+A/c\s*(?:no\.?\s*)?[Xx*]*(\d{4})',
       caseSensitive: false,
@@ -222,24 +266,95 @@ class AxisRules extends BankRule {
               normalizedBody.toLowerCase().contains('credit card') ||
               normalizedBody.toLowerCase().contains('cred');
 
+      final isUpi = normalizedBody.toLowerCase().contains('upi') ||
+          normalizedBody.toLowerCase().contains('vpa');
+
+      final balMatch =
+          RegexPatterns.availableBalance.firstMatch(normalizedBody);
+      final balance =
+          balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
+
+      // Extract merchant
+      String? merchant;
+      final merchantMatch = RegExp(
+        r'(?:to|at|for)\s+([A-Za-z0-9\s&._-]+?)(?:\.|\s+Avl|\s+ref|\s+Ref|$)',
+        caseSensitive: false,
+      ).firstMatch(normalizedBody);
+      if (merchantMatch != null) {
+        final cand = merchantMatch.group(1)?.trim();
+        if (cand != null &&
+            !cand.toLowerCase().contains('bank') &&
+            !cand.toLowerCase().contains('a/c')) {
+          merchant = cand;
+        }
+      }
+
       final refMatch = RegexPatterns.referenceNumber.firstMatch(normalizedBody);
       final ref = refMatch?.group(1);
 
       return ParsedTransaction(
         id: const Uuid().v4(),
         rawSmsId: rawSmsId,
-        type:
-            isCardPayment ? TransactionType.billPayment : TransactionType.debit,
+        type: isCardPayment
+            ? TransactionType.billPayment
+            : (isUpi ? TransactionType.upi : TransactionType.debit),
         bank: Bank.axis,
         accountLast4: acctLast4,
         amount: amount,
         currency: 'INR',
         transactionDate: txnDate,
         smsReceivedAt: smsTimestamp,
+        merchant: merchant,
+        balance: balance,
         reference: ref,
         confidence: Confidence.high,
         parserVersion: '1.0.0',
         category: isCardPayment ? 'Credit Card Payment' : 'General Debit',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    // 7. Axis Bank Account Credit
+    // "INR 10,000.00 credited to Axis Bank A/c no. XX1234 on 05-09-26. Avl Bal INR 25,000.00."
+    final creditMatch = RegExp(
+      r'(?:Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)\s+credited\s+to\s+Axis\s+Bank\s+A/c\s*(?:no\.?\s*)?[Xx*]*(\d{4})',
+      caseSensitive: false,
+    ).firstMatch(normalizedBody);
+
+    if (creditMatch != null) {
+      final amount = AmountParser.parse(creditMatch.group(1)) ?? 0.0;
+      final acctLast4 = creditMatch.group(2);
+
+      final dateMatch = RegExp(r'on\s+([0-9]{1,2}-[0-9]{1,2}-[0-9]{2,4})',
+              caseSensitive: false)
+          .firstMatch(normalizedBody);
+      final txnDate = dateMatch != null
+          ? DateParser.parse(dateMatch.group(1)) ?? smsTimestamp
+          : smsTimestamp;
+
+      final balMatch =
+          RegexPatterns.availableBalance.firstMatch(normalizedBody);
+      final balance =
+          balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
+
+      final isSalary = normalizedBody.toLowerCase().contains('salary') ||
+          normalizedBody.toLowerCase().contains('payroll');
+
+      return ParsedTransaction(
+        id: const Uuid().v4(),
+        rawSmsId: rawSmsId,
+        type: isSalary ? TransactionType.salary : TransactionType.credit,
+        bank: Bank.axis,
+        accountLast4: acctLast4,
+        amount: amount,
+        currency: 'INR',
+        transactionDate: txnDate,
+        smsReceivedAt: smsTimestamp,
+        balance: balance,
+        confidence: Confidence.high,
+        parserVersion: '1.0.0',
+        category: isSalary ? 'Salary' : 'Income',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

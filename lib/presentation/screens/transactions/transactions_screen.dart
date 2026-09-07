@@ -111,8 +111,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 // Apply local filters
                 var filtered = txns;
                 if (_selectedType != null) {
-                  filtered =
-                      filtered.where((t) => t.type == _selectedType).toList();
+                  if (_selectedType == TransactionType.purchase) {
+                    filtered = filtered
+                        .where((t) =>
+                            t.type == TransactionType.purchase ||
+                            (t.cardLast4 != null &&
+                                t.cardLast4!.isNotEmpty &&
+                                t.type.isExpense))
+                        .toList();
+                  } else {
+                    filtered =
+                        filtered.where((t) => t.type == _selectedType).toList();
+                  }
                 }
                 if (_searchQuery.isNotEmpty) {
                   filtered = filtered.where((t) {
