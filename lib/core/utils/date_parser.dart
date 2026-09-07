@@ -60,9 +60,10 @@ class DateParser {
     }
 
     // 4. DD-MMM-YY / DD-MMM-YYYY (e.g., 30-Jan-26, 05-FEB-26, 27-JUN-25, 06-SEP-26, 05Sep26, 25 Sep 2026)
-    final textMonthMatch =
-        RegExp(r'(\d{1,2})[-/\s]?([a-zA-Z]{3})[-/\s]?(\d{2,4})', caseSensitive: false)
-            .firstMatch(text);
+    final textMonthMatch = RegExp(
+            r'(\d{1,2})[-/\s]?([a-zA-Z]{3})[-/\s]?(\d{2,4})',
+            caseSensitive: false)
+        .firstMatch(text);
     if (textMonthMatch != null) {
       final d = int.parse(textMonthMatch.group(1)!);
       final monthStr = textMonthMatch.group(2)!.toLowerCase();

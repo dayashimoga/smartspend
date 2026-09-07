@@ -247,13 +247,18 @@ class IciciRules extends BankRule {
     ).firstMatch(normalizedBody);
 
     if (spentMatch != null) {
-      final amount = AmountParser.parse(spentMatch.group(1) ?? spentMatch.group(5)) ?? 0.0;
+      final amount =
+          AmountParser.parse(spentMatch.group(1) ?? spentMatch.group(5)) ?? 0.0;
       final cardLast4 = spentMatch.group(2) ?? spentMatch.group(6);
-      final txnDate = DateParser.parse(spentMatch.group(3) ?? spentMatch.group(7)) ?? smsTimestamp;
+      final txnDate =
+          DateParser.parse(spentMatch.group(3) ?? spentMatch.group(7)) ??
+              smsTimestamp;
       final merchant = (spentMatch.group(4) ?? spentMatch.group(8))?.trim();
 
-      final limitMatch = RegexPatterns.availableLimit.firstMatch(normalizedBody);
-      final avlLimit = limitMatch != null ? AmountParser.parse(limitMatch.group(1)) : null;
+      final limitMatch =
+          RegexPatterns.availableLimit.firstMatch(normalizedBody);
+      final avlLimit =
+          limitMatch != null ? AmountParser.parse(limitMatch.group(1)) : null;
 
       return ParsedTransaction(
         id: const Uuid().v4(),
@@ -286,18 +291,24 @@ class IciciRules extends BankRule {
 
     if (debitMatch != null) {
       final acctLast4 = debitMatch.group(1) ?? debitMatch.group(5);
-      final amount = AmountParser.parse(debitMatch.group(2) ?? debitMatch.group(4)) ?? 0.0;
-      final txnDate = DateParser.parse(debitMatch.group(3) ?? debitMatch.group(6)) ?? smsTimestamp;
+      final amount =
+          AmountParser.parse(debitMatch.group(2) ?? debitMatch.group(4)) ?? 0.0;
+      final txnDate =
+          DateParser.parse(debitMatch.group(3) ?? debitMatch.group(6)) ??
+              smsTimestamp;
 
       final isUpi = normalizedBody.toLowerCase().contains('upi') ||
           normalizedBody.toLowerCase().contains('vpa');
 
-      final isCardPayment = normalizedBody.toLowerCase().contains('card payment') ||
-          normalizedBody.toLowerCase().contains('credit card') ||
-          normalizedBody.toLowerCase().contains('cred');
+      final isCardPayment =
+          normalizedBody.toLowerCase().contains('card payment') ||
+              normalizedBody.toLowerCase().contains('credit card') ||
+              normalizedBody.toLowerCase().contains('cred');
 
-      final balMatch = RegexPatterns.availableBalance.firstMatch(normalizedBody);
-      final balance = balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
+      final balMatch =
+          RegexPatterns.availableBalance.firstMatch(normalizedBody);
+      final balance =
+          balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
 
       // Extract merchant
       String? merchant;
@@ -307,7 +318,9 @@ class IciciRules extends BankRule {
       ).firstMatch(normalizedBody);
       if (merchantMatch != null) {
         final cand = merchantMatch.group(1)?.trim();
-        if (cand != null && !cand.toLowerCase().contains('bank') && !cand.toLowerCase().contains('a/c')) {
+        if (cand != null &&
+            !cand.toLowerCase().contains('bank') &&
+            !cand.toLowerCase().contains('a/c')) {
           merchant = cand;
         }
       }
@@ -350,8 +363,10 @@ class IciciRules extends BankRule {
       final amount = AmountParser.parse(creditMatch.group(2)) ?? 0.0;
       final txnDate = DateParser.parse(creditMatch.group(3)) ?? smsTimestamp;
 
-      final balMatch = RegexPatterns.availableBalance.firstMatch(normalizedBody);
-      final balance = balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
+      final balMatch =
+          RegexPatterns.availableBalance.firstMatch(normalizedBody);
+      final balance =
+          balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
 
       final isSalary = normalizedBody.toLowerCase().contains('salary') ||
           normalizedBody.toLowerCase().contains('payroll');

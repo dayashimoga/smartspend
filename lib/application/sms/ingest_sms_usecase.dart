@@ -267,9 +267,8 @@ class IngestSmsUseCase {
       final matchingBill = existingBills.where((b) =>
           b.dueDate.millisecondsSinceEpoch == dueDate.millisecondsSinceEpoch);
 
-      final billId = matchingBill.isNotEmpty
-          ? matchingBill.first.id
-          : const Uuid().v4();
+      final billId =
+          matchingBill.isNotEmpty ? matchingBill.first.id : const Uuid().v4();
 
       final bill = Bill(
         id: billId,

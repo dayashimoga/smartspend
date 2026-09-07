@@ -269,8 +269,10 @@ class AxisRules extends BankRule {
       final isUpi = normalizedBody.toLowerCase().contains('upi') ||
           normalizedBody.toLowerCase().contains('vpa');
 
-      final balMatch = RegexPatterns.availableBalance.firstMatch(normalizedBody);
-      final balance = balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
+      final balMatch =
+          RegexPatterns.availableBalance.firstMatch(normalizedBody);
+      final balance =
+          balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
 
       // Extract merchant
       String? merchant;
@@ -280,7 +282,9 @@ class AxisRules extends BankRule {
       ).firstMatch(normalizedBody);
       if (merchantMatch != null) {
         final cand = merchantMatch.group(1)?.trim();
-        if (cand != null && !cand.toLowerCase().contains('bank') && !cand.toLowerCase().contains('a/c')) {
+        if (cand != null &&
+            !cand.toLowerCase().contains('bank') &&
+            !cand.toLowerCase().contains('a/c')) {
           merchant = cand;
         }
       }
@@ -329,8 +333,10 @@ class AxisRules extends BankRule {
           ? DateParser.parse(dateMatch.group(1)) ?? smsTimestamp
           : smsTimestamp;
 
-      final balMatch = RegexPatterns.availableBalance.firstMatch(normalizedBody);
-      final balance = balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
+      final balMatch =
+          RegexPatterns.availableBalance.firstMatch(normalizedBody);
+      final balance =
+          balMatch != null ? AmountParser.parse(balMatch.group(1)) : null;
 
       final isSalary = normalizedBody.toLowerCase().contains('salary') ||
           normalizedBody.toLowerCase().contains('payroll');

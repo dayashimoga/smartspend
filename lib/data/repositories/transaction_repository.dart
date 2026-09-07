@@ -241,8 +241,7 @@ class TransactionRepository implements ITransactionRepository {
         } else {
           final txRes = await db.query(
             'parsed_transactions',
-            where:
-                'bank = ? AND account_last4 = ? AND balance IS NOT NULL',
+            where: 'bank = ? AND account_last4 = ? AND balance IS NOT NULL',
             whereArgs: [bankName, last4],
             orderBy:
                 'COALESCE(sms_received_at, transaction_date) DESC, transaction_date DESC, created_at DESC',

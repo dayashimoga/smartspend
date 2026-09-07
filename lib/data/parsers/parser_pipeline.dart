@@ -119,7 +119,9 @@ class ParserPipeline {
         normalizedBody: normalized,
         smsTimestamp: timestamp,
       );
-      if (result != null && result.bank == Bank.unknown && detectedBank != Bank.unknown) {
+      if (result != null &&
+          result.bank == Bank.unknown &&
+          detectedBank != Bank.unknown) {
         result = result.copyWith(bank: detectedBank);
       }
     }

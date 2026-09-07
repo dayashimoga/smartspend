@@ -70,9 +70,8 @@ class GenericRules extends BankRule {
       }
 
       final minMatch = RegexPatterns.billMinDue.firstMatch(normalizedBody);
-      final minDue = minMatch != null
-          ? AmountParser.parse(minMatch.group(1)) ?? 0.0
-          : 0.0;
+      final minDue =
+          minMatch != null ? AmountParser.parse(minMatch.group(1)) ?? 0.0 : 0.0;
 
       final dueMatch = RegexPatterns.billDueDate.firstMatch(normalizedBody);
       DateTime? dueDate;
@@ -106,7 +105,9 @@ class GenericRules extends BankRule {
 
       // If text explicitly mentions credit card bill/statement, NEVER let it fall through to spend/debit
       if (lower.contains('card') &&
-          (lower.contains('statement') || lower.contains('bill') || lower.contains('due'))) {
+          (lower.contains('statement') ||
+              lower.contains('bill') ||
+              lower.contains('due'))) {
         return ParsedTransaction(
           id: const Uuid().v4(),
           rawSmsId: rawSmsId,
@@ -310,10 +311,9 @@ class GenericRules extends BankRule {
 
     // 5. Reference / UPI Ref
     final refMatch = RegexPatterns.referenceNumber.firstMatch(normalizedBody);
-    final upiRefMatch = RegExp(
-            r'(?:by\s+)?UPI\s*[:.]?\s*([0-9]{6,20})',
-            caseSensitive: false)
-        .firstMatch(normalizedBody);
+    final upiRefMatch =
+        RegExp(r'(?:by\s+)?UPI\s*[:.]?\s*([0-9]{6,20})', caseSensitive: false)
+            .firstMatch(normalizedBody);
     final ref = refMatch?.group(1) ?? upiRefMatch?.group(1);
 
     // 6. Contextual Merchant / Payee

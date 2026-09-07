@@ -42,8 +42,11 @@ class KotakRules extends BankRule {
 
       if (billMatch != null || billMatchB != null) {
         final cardLast4 = billMatch?.group(1) ?? billMatchB?.group(2);
-        final total = AmountParser.parse(billMatch?.group(2) ?? billMatchB?.group(1)) ?? 0.0;
-        final dueDate = DateParser.parse(billMatch?.group(4) ?? billMatchB?.group(3));
+        final total =
+            AmountParser.parse(billMatch?.group(2) ?? billMatchB?.group(1)) ??
+                0.0;
+        final dueDate =
+            DateParser.parse(billMatch?.group(4) ?? billMatchB?.group(3));
 
         double minDue = 0.0;
         final minMatch = RegExp(
@@ -193,7 +196,9 @@ class KotakRules extends BankRule {
       ).firstMatch(normalizedBody);
       if (merchantMatch != null) {
         final cand = merchantMatch.group(1)?.trim();
-        if (cand != null && !cand.toLowerCase().contains('bank') && !cand.toLowerCase().contains('a/c')) {
+        if (cand != null &&
+            !cand.toLowerCase().contains('bank') &&
+            !cand.toLowerCase().contains('a/c')) {
           merchant = cand;
         }
       }

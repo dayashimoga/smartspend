@@ -221,8 +221,8 @@ void main() {
 
       final allTxns = await txnRepo.getAllTransactions();
       final cafe = allTxns.firstWhere((t) => t.merchant == 'Cafe Coffee Day');
-      final bookstore = allTxns.firstWhere(
-          (t) => t.merchant == 'BookStore' && t.type == TransactionType.purchase);
+      final bookstore = allTxns.firstWhere((t) =>
+          t.merchant == 'BookStore' && t.type == TransactionType.purchase);
       final refund =
           allTxns.firstWhere((t) => t.type == TransactionType.refund);
 

@@ -80,7 +80,8 @@ class SbiRules extends BankRule {
         r'dated\s+([0-9]{1,2}[-/][0-9]{1,2}[-/][0-9]{2,4})',
         caseSensitive: false,
       ).firstMatch(normalizedBody);
-      final stmtDate = stmtMatch != null ? DateParser.parse(stmtMatch.group(1)) : null;
+      final stmtDate =
+          stmtMatch != null ? DateParser.parse(stmtMatch.group(1)) : null;
 
       if (total > 0 || dueDate != null) {
         dueDate ??= smsTimestamp.add(const Duration(days: 20));
@@ -232,9 +233,14 @@ class SbiRules extends BankRule {
 
     if (acctMatch != null) {
       final acctLast4 = acctMatch.group(1) ?? acctMatch.group(7);
-      final isDebit = (acctMatch.group(2) ?? acctMatch.group(6))!.toLowerCase() == 'debited';
-      final amount = AmountParser.parse(acctMatch.group(3) ?? acctMatch.group(5)) ?? 0.0;
-      final txnDate = DateParser.parse(acctMatch.group(4) ?? acctMatch.group(8)) ?? smsTimestamp;
+      final isDebit =
+          (acctMatch.group(2) ?? acctMatch.group(6))!.toLowerCase() ==
+              'debited';
+      final amount =
+          AmountParser.parse(acctMatch.group(3) ?? acctMatch.group(5)) ?? 0.0;
+      final txnDate =
+          DateParser.parse(acctMatch.group(4) ?? acctMatch.group(8)) ??
+              smsTimestamp;
 
       final isUpi = normalizedBody.toLowerCase().contains('upi') ||
           normalizedBody.toLowerCase().contains('vpa');
@@ -252,7 +258,9 @@ class SbiRules extends BankRule {
       ).firstMatch(normalizedBody);
       if (merchantMatch != null) {
         final cand = merchantMatch.group(1)?.trim();
-        if (cand != null && !cand.toLowerCase().contains('bank') && !cand.toLowerCase().contains('a/c')) {
+        if (cand != null &&
+            !cand.toLowerCase().contains('bank') &&
+            !cand.toLowerCase().contains('a/c')) {
           merchant = cand;
         }
       }

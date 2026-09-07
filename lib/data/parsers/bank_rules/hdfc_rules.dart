@@ -34,7 +34,8 @@ class HdfcRules extends BankRule {
       final cardLast4 = billMatchA.group(1);
       final total = AmountParser.parse(billMatchA.group(2)) ?? 0.0;
       final minDue = AmountParser.parse(billMatchA.group(3)) ?? 0.0;
-      final dueDate = DateParser.parse(billMatchA.group(4), referenceYear: smsTimestamp.year);
+      final dueDate = DateParser.parse(billMatchA.group(4),
+          referenceYear: smsTimestamp.year);
 
       return ParsedTransaction(
         id: const Uuid().v4(),
@@ -66,7 +67,8 @@ class HdfcRules extends BankRule {
 
     if (billMatchB != null) {
       final cardLast4 = billMatchB.group(1);
-      final dueDate = DateParser.parse(billMatchB.group(2), referenceYear: smsTimestamp.year);
+      final dueDate = DateParser.parse(billMatchB.group(2),
+          referenceYear: smsTimestamp.year);
       final total = AmountParser.parse(billMatchB.group(3)) ?? 0.0;
       final minDue = AmountParser.parse(billMatchB.group(4)) ?? 0.0;
 
@@ -101,7 +103,8 @@ class HdfcRules extends BankRule {
     if (billMatchC != null) {
       final total = AmountParser.parse(billMatchC.group(1)) ?? 0.0;
       final cardLast4 = billMatchC.group(2);
-      final dueDate = DateParser.parse(billMatchC.group(3), referenceYear: smsTimestamp.year);
+      final dueDate = DateParser.parse(billMatchC.group(3),
+          referenceYear: smsTimestamp.year);
       final minDue = AmountParser.parse(billMatchC.group(4)) ?? 0.0;
 
       return ParsedTransaction(
@@ -136,7 +139,8 @@ class HdfcRules extends BankRule {
     if (billMatchD != null) {
       final cardLast4 = billMatchD.group(1);
       final total = AmountParser.parse(billMatchD.group(2)) ?? 0.0;
-      final dueDate = DateParser.parse(billMatchD.group(3), referenceYear: smsTimestamp.year);
+      final dueDate = DateParser.parse(billMatchD.group(3),
+          referenceYear: smsTimestamp.year);
       final minDue = AmountParser.parse(billMatchD.group(4)) ?? 0.0;
 
       return ParsedTransaction(
@@ -401,7 +405,8 @@ class HdfcRules extends BankRule {
       final upiRef = cardTxnMatch.group(4);
       final dateStr = cardTxnMatch.group(5);
       final txnDate = dateStr != null
-          ? DateParser.parse(dateStr, referenceYear: smsTimestamp.year) ?? smsTimestamp
+          ? DateParser.parse(dateStr, referenceYear: smsTimestamp.year) ??
+              smsTimestamp
           : smsTimestamp;
 
       if (merchant != null) {
@@ -411,7 +416,8 @@ class HdfcRules extends BankRule {
         }
       }
 
-      final isUpi = upiRef != null || normalizedBody.toLowerCase().contains('upi');
+      final isUpi =
+          upiRef != null || normalizedBody.toLowerCase().contains('upi');
 
       return ParsedTransaction(
         id: const Uuid().v4(),
